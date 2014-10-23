@@ -1,0 +1,13 @@
+!obj:deepbeat.pylearn2ext.AdaptableDenoisingAutoencoder {
+    name: %(name)s,
+    nvis : %(n_inputs)i,
+    nhid : %(n_outputs)i,
+    irange : %(input_range)f, # 0.05,
+    corruptor: !obj:pylearn2.corruption.BinomialCorruptor {
+        corruption_level: %(corruption_level)d,
+    },
+    act_enc: "tanh",
+    act_dec: "tanh",    # null = Linear activation on the decoder side.
+    tied_weights: True,
+    rng: %(random_seed)i,
+}

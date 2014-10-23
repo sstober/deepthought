@@ -1,0 +1,217 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:deepbeat.eeg.EEGDataset.EEGDataset {
+        name : 'train',
+        path : %(dataset_root)s,
+        suffix : %(dataset_suffix)s,
+        subjects : %(subjects)s,
+        resample : [400,%(sample_rate)i],
+        start_sample : 1600,
+        stop_sample  : 11200,     # None (empty) = end of sequence 
+        frame_size : %(input_length)i,
+        hop_size : %(hop_size)i,
+        label_mode : %(label_mode)s,
+        n_fft : %(n_fft)s,
+        n_freq_bins : %(n_freq_bins)i,
+        spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+        spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+    },
+    
+    model: &model !obj:pylearn2.models.mlp.MLP {
+        seed : %(random_seed)i,                                        # controls initialization
+        batch_size: %(batch_size)i,
+        nvis: %(input_length)i,
+        layers: [
+                # !obj:pylearn2.models.mlp.PretrainedLayer {
+                !obj:deepbeat.pylearn2ext.pretrained.PretrainedRLU {
+                       layer_name : 'h0',
+                       layer_content : !pkl: '%(layer0_content)s',
+                       # max_col_norm: 1.75,
+                       # max_col_norm: 1.9365,
+                },
+                
+                # !obj:pylearn2.models.mlp.PretrainedLayer {
+                !obj:deepbeat.pylearn2ext.pretrained.PretrainedRLU {
+                       layer_name : 'h1',
+                       layer_content : !pkl: '%(layer1_content)s',
+                       # max_col_norm: 1.55,
+                       # max_col_norm: 1.9365,
+                },
+                
+                # !obj:pylearn2.models.mlp.PretrainedLayer {
+                !obj:deepbeat.pylearn2ext.pretrained.PretrainedRLU {
+                       layer_name : 'h2',
+                       layer_content : !pkl: '%(layer2_content)s',
+                       # max_col_norm: 1.25,
+                       # max_col_norm: 1.9365,
+                },
+
+                # !obj:pylearn2.models.mlp.Softmax {
+                # !obj:deepbeat.pylearn2ext.SoftmaxClassificationLayer.SoftmaxClassificationLayer {
+                # !obj:deepbeat.pylearn2ext.HingeLoss.HingeLoss {
+                !obj:%(output_layer_class)s {
+                    # max_col_norm: 1.9365, 
+                    layer_name: 'y',
+                    n_classes: %(n_classes)i,                
+                    # istdev: .05,
+                    irange : %(input_range)f, #.005
+                    # max_col_norm: 1.9365,
+                 }
+               ]
+    },
+    
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        seed: %(random_seed)i,                                  # controls dataset traversal
+        batch_size: %(batch_size)i,
+        learning_rate: %(learning_rate)f,
+        
+        monitoring_dataset:
+            {
+                'train' : *train,
+                'valid' : &valid !obj:deepbeat.eeg.EEGDataset.EEGDataset {
+                                name : 'valid',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 0,
+                                stop_sample  : 1600,     # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+                'test'  : &test !obj:deepbeat.eeg.EEGDataset.EEGDataset {
+                                name : 'test',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 11200,
+                                stop_sample  : 12800,     # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+                'post'  : &post !obj:deepbeat.eeg.EEGDataset.EEGDataset {
+                                name : 'post',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 12800,
+                                stop_sample  : 13600,    # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+            },
+
+        # cost: &cost !obj:pylearn2.models.mlp.Default {},
+        
+        cost: &cost
+            !obj:pylearn2.costs.cost.SumOfCosts { 
+                costs: [
+                    !obj:pylearn2.costs.mlp.dropout.Dropout {
+                        input_include_probs: { 'h0' : .8 },
+                        input_scales: { 'h0': 1. }
+                    },
+                    # !obj:pylearn2.costs.mlp.L1WeightDecay {
+                    #     coeffs: %(l1_weight_decay_coeffs)s, #[ .000001, .000001, .000001, .000001 ]
+                    # },
+                    # !obj:pylearn2.costs.mlp.WeightDecay {
+                    #     coeffs: %(l2_weight_decay_coeffs)s, #[ .000005, .000005, .000005, .000005 ]
+                    # },
+                ]
+            },            
+
+        termination_criterion: 
+            !obj:pylearn2.termination_criteria.And {
+                criteria: [
+                    # !obj:pylearn2.termination_criteria.MonitorBased {
+                    #     channel_name: "valid_ptrial_misclass_rate",
+                    #     prop_decrease: 0.01,
+                    #     N: %(termination_patience_epochs)i,
+                    # },
+                    !obj:pylearn2.termination_criteria.EpochCounter {
+                        max_epochs: %(max_epochs)i
+                    },
+                ]
+            },
+
+        learning_rule: 
+            !obj:pylearn2.training_algorithms.learning_rule.AdaDelta {},
+
+    },
+    
+    extensions:
+        [
+            # like pylearn2.training_algorithms.sgd.ExponentialDecay
+            # but only applied once per epoch (i.e. independent of batch_size)
+            # decay factor needs to be adjusted as x ** num_batches_per_epoch
+            !obj:deepbeat.pylearn2ext.ExponentialDecay.ExponentialDecay {
+                decay_factor: %(lr_exponential_decay_factor)f, 
+                min_lr: %(lr_exponential_decay_min_lr)f, 
+            },
+            
+            !obj:deepbeat.pylearn2ext.util.LoggingCallback {
+                name: 'mlp',
+                obj_channel: 'train_objective'
+            },
+
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'train',
+                dataset: *train,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'valid',
+                dataset: *valid,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'test',
+                dataset: *test,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'post',
+                dataset: *post,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+
+            # should be last extensions (after all computations are done)
+            !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+                channel_name: 'valid_y_misclass',
+                higher_is_better: False,
+                save_path: "%(experiment_root)s/mlp_best.pkl",
+            }, 
+            !obj:deepbeat.pylearn2ext.util.SaveEveryEpoch {
+                save_path: "%(experiment_root)s/epochs/",
+                save_prefix: "epoch",
+            },
+    ],
+    
+    save_freq: 1,
+    save_path: "%(experiment_root)s/mlp.pkl",
+    allow_overwrite: False,
+
+}

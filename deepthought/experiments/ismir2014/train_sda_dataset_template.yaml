@@ -1,0 +1,16 @@
+!obj:deepbeat.eeg.EEGDataset.EEGDataset {
+     name : 'train',
+     path : %(dataset_root)s,
+     suffix : %(dataset_suffix)s,
+     subjects : %(subjects)s,
+     resample : [400,%(sample_rate)i],
+     start_sample : 1600,
+     stop_sample  : 11200,     # None (empty) = end of sequence 
+     frame_size : %(input_length)i,
+     hop_size : %(hop_size)i,
+     label_mode : %(label_mode)s,
+     n_fft : %(n_fft)s,
+     n_freq_bins : %(n_freq_bins)i,
+     spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+     spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+}

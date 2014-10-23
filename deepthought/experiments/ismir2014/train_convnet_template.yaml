@@ -1,0 +1,259 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:deepthought.datasets.rwanda2013rhythms.EEGDataset {
+        name : 'train',
+        path : %(dataset_root)s,
+        suffix : %(dataset_suffix)s,
+        subjects : %(subjects)s,
+        resample : [400,%(sample_rate)i],
+        start_sample : 1600,
+        stop_sample  : 11200,     # None (empty) = end of sequence 
+        frame_size : %(input_length)i,
+        hop_size : %(hop_size)i,
+        label_mode : %(label_mode)s,
+        n_fft : %(n_fft)s,
+        n_freq_bins : %(n_freq_bins)i,
+        spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+        spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+    },
+    
+    model: &model !obj:pylearn2.models.mlp.MLP {
+        seed : %(random_seed)i,                                        # controls initialization
+        batch_size: %(batch_size)i,
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+                        shape: [%(input_length)i, %(n_freq_bins)i],                  # just 1d
+                        num_channels: 1,
+                    },
+        layers: [
+                !obj:pylearn2.models.mlp.ConvRectifiedLinear {
+                    layer_name: 'h0_beat',
+                    output_channels: %(num_beat_patterns)i,            # number of feature maps
+                    irange: %(input_range)f,
+                    # init_bias: ,                    
+                    # max_kernel_norm: 1.9365,
+                    kernel_shape: [%(beat_pattern_width)i, %(n_freq_bins)i],         # -> little more than a beat length
+                    pool_shape: [%(beat_pool_size)i, 1],               # if 1 -> no aggregation / smoothing / time-invariance
+                    pool_stride: [%(beat_pool_stride)i, 1],             # if 1 -> no sub-sampling / dimension reduction
+                    pool_type: 'max',
+                    tied_b: True
+                },
+                # 1 x beat_pattern_width x 1 x num_beat_patterns parameters -> 250
+                # output = num_beat_patterns time sequences at same sample rate as input
+                
+                !obj:pylearn2.models.mlp.ConvRectifiedLinear {
+                    layer_name: 'h1_bar',
+                    output_channels: %(num_bar_patterns)i,
+                    irange: %(input_range)f,
+                    # init_bias: ,
+                    # max_kernel_norm: 1.9365,
+                    kernel_shape: [%(bar_pattern_width)i, 1],
+                    pool_shape: [%(bar_pool_size)i, 1],
+                    pool_stride: [%(bar_pool_stride)i, 1],
+                    pool_type: 'max',
+                    tied_b: True
+                },
+                # num_beat_patterns x bar_pattern_width x 1 x num_bar_patterns parameters -> 15000
+                # output = num_bar_patterns time sequences at same sample rate as input 
+                
+#                 !obj:pylearn2.models.mlp.ConvRectifiedLinear {
+#                     layer_name: 'h2_rhythm',
+#                     output_channels: %(num_rhythm_patterns)i,
+#                     irange: %(input_range)f,
+#                     # init_bias: ,                    
+#                     # max_kernel_norm: 1.9365,
+#                     kernel_shape: [%(rhyth_pattern_width)i, 1],
+#                     pool_shape: [%(rhythm_pool_size)i, 1],
+#                     pool_stride: [%(rhythm_pool_stride)i, 1],
+#                     pool_type: 'max',
+# #                     left_slope: 1,            # what is that???
+#                     tied_b: True
+#                 },
+                # num_rhythm_patterns x rhyth_pattern_width x 1 x num_beat_patterns parameters -> 30000
+                # output = num_rhythm_patterns time sequences at the same sample rate as input
+                
+                # !obj:pylearn2.models.mlp.Softmax {
+                # !obj:deepbeat.pylearn2ext.SoftmaxClassificationLayer.SoftmaxClassificationLayer {
+                # !obj:deepbeat.pylearn2ext.HingeLoss.HingeLoss {
+                !obj:%(output_layer_class)s {
+                    # max_col_norm: 1.9365,
+                    layer_name: 'y',
+                    n_classes: %(n_classes)i,
+                    irange: %(input_range)f,
+                    # istdev: .05,
+                    # max_col_norm: 1.9365,
+                 }
+                
+               ]
+    },
+    
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        seed: %(random_seed)i,                                  # controls dataset traversal
+        batch_size: %(batch_size)i,
+        learning_rate: %(learning_rate)f,
+
+        monitoring_dataset:
+            {
+                'train' : *train,
+                'valid' : &valid !obj:deepthought.datasets.rwanda2013rhythms.EEGDataset {
+                                name : 'valid',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 0,
+                                stop_sample  : 1600,     # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+                'test'  : &test !obj:deepthought.datasets.rwanda2013rhythms.EEGDataset {
+                                name : 'test',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 11200,
+                                stop_sample  : 12800,     # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+                'post'  : &post !obj:deepbeat.eeg.EEGDataset.EEGDataset {
+                                name : 'post',
+                                path : %(dataset_root)s, 
+                                suffix : %(dataset_suffix)s,
+                                subjects : %(subjects)s,
+                                resample : [400,%(sample_rate)i],
+                                start_sample : 12800,
+                                stop_sample  : 13600,    # None (empty) = end of sequence 
+                                frame_size : %(input_length)i,
+                                hop_size : %(hop_size)i,           
+                                label_mode : %(label_mode)s,
+                                n_fft : %(n_fft)s,
+                                n_freq_bins : %(n_freq_bins)i,
+                                spectrum_log_amplitude : %(spectrum_log_amplitude)s,
+                                spectrum_normalization_mode : %(spectrum_normalization_mode)s,
+                            },
+            },
+        # cost: &cost !obj:pylearn2.models.mlp.Default {},
+        
+        cost: &cost
+            # !obj:pylearn2.costs.cost.SumOfCosts { 
+            #     costs: [
+                    !obj:pylearn2.costs.mlp.dropout.Dropout {
+                        input_include_probs: { 'h0_beat' : .8 },
+                            input_scales: { 'h0_beat': 1. }
+                    },
+                    # !obj:pylearn2.costs.mlp.L1WeightDecay {
+                    #     coeffs: %(l1_weight_decay_coeffs)s, #[ .000001, .000001, .000001, .000001 ]
+                    # },
+                    # !obj:pylearn2.costs.mlp.WeightDecay {
+                    #     coeffs: %(l2_weight_decay_coeffs)s, #[ .000005, .000005, .000005, .000005 ]
+                    # },
+            #     ]
+            # },
+
+        termination_criterion: 
+            # !obj:pylearn2.termination_criteria.And {
+                # criteria: [
+                    # !obj:pylearn2.termination_criteria.MonitorBased {
+                    #     channel_name: "valid_y_misclass",
+                    #     prop_decrease: 0.50,
+                    #     N: 10
+                    # },
+                    !obj:pylearn2.termination_criteria.EpochCounter {
+                        max_epochs: %(max_epochs)i
+                    },
+                # ]
+            # },
+
+        learning_rule: 
+            !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+                init_momentum: %(momentum_init)f,
+            },
+            # !obj:pylearn2.training_algorithms.learning_rule.AdaDelta {},
+
+    },
+    
+    extensions:
+        [
+            # like pylearn2.training_algorithms.sgd.ExponentialDecay
+            # but only applied once per epoch (i.e. independent of batch_size)
+            # decay factor needs to be adjusted as x ** num_batches_per_epoch
+            !obj:deepbeat.pylearn2ext.ExponentialDecay.ExponentialDecay {
+                decay_factor: %(lr_exponential_decay_factor)f, 
+                min_lr: %(lr_exponential_decay_min_lr)f, 
+            },
+
+            # !obj:pylearn2.training_algorithms.sgd.OneOverEpoch {
+            #     start: 1,
+            #     # How many epochs after start it will take for the learning rate to lose
+            #     # half its value for the first time (to lose the next half of its value
+            #     # will take twice as long)
+            #     half_life : 5, 
+            #     min_lr : 0.000001,
+            # },
+
+            !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+                start: %(momentum_start_epoch)i,
+                saturate: %(momentum_saturate_epoch)i,
+                final_momentum: %(momentum_final)f,
+            },            
+             
+            !obj:deepbeat.pylearn2ext.util.LoggingCallback {
+                name: 'mlp',
+                obj_channel: 'train_objective'
+            },
+
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'train',
+                dataset: *train,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'valid',
+                dataset: *valid,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'test',
+                dataset: *test,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+            !obj:deepbeat.pylearn2ext.util.ClassificationLoggingCallback {
+                header: 'post',
+                dataset: *post,
+                model: *model,
+                class_prf1_channels: %(class_prf1_channels)s,
+                confusion_channels: %(confusion_channels)s,
+            },
+
+            # should be extension last (after all computations are done)
+            !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+                channel_name: 'valid_y_misclass',
+                higher_is_better: False,
+                save_path: "%(experiment_root)s/mlp_best.pkl",
+            },
+            !obj:deepbeat.pylearn2ext.util.SaveEveryEpoch {
+                save_path: "%(experiment_root)s/epochs/",
+                save_prefix: "epoch",
+            },
+    ],
+    
+    save_freq: 1,
+    save_path: "%(experiment_root)s/mlp.pkl",
+    allow_overwrite: False,
+}
