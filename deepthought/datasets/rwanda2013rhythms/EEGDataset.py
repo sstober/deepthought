@@ -49,6 +49,7 @@ class EEGDataset(DenseDesignMatrix):
                  spectrum_log_amplitude = False,
                  spectrum_normalization_mode = None,
                  include_phase = False,
+                 layout = 'tf'     # 2D axes layout tf=time x features or ft= features x time
                  ):
         '''
         Constructor
@@ -249,11 +250,17 @@ class EEGDataset(DenseDesignMatrix):
             
             # re-arrange dimensions
             sequences = sequences.swapaxes(0,1).swapaxes(1,2).swapaxes(2,3);
+
+            if layout == 'ft':
+                sequences = sequences.swapaxes(1,2)
             
             log.debug('final dataset shape: {} (b,0,1,c)'.format(sequences.shape));
-            
+            print 'final dataset shape: {} (b,0,1,c)'.format(sequences.shape)
             super(EEGDataset, self).__init__(topo_view=sequences, y=one_hot_y, axes=['b', 0, 1, 'c']);
         else:
+            if layout == 'ft':
+                sequences = sequences.swapaxes(1,2)
+
             super(EEGDataset, self).__init__(X=sequences, y=one_hot_y, axes=['b', 0, 1, 'c']);
         
         log.debug('generated dataset "{}" with shape X={} y={} labels={} '.format(self.name, self.X.shape, self.y.shape, self.labels.shape));
