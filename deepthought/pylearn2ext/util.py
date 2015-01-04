@@ -18,6 +18,9 @@ from pylearn2.utils import serial;
 from pylearn2.utils.timing import log_timing
 from pylearn2.space import CompositeSpace
 
+from pylearn2.utils.string_utils import preprocess
+import os
+from shutil import copyfile
             
 def process_dataset(model, dataset, data_specs=None, output_fn=None):
     
@@ -73,6 +76,26 @@ def aggregate_classification(seq_starts, y_real, y_pred, output):
     s_predfsq = np.hstack(s_predfsq);   
     
     return s_real, s_pred, s_predf, s_predfsq;
+
+class SaveYaml(TrainExtension):
+
+    def __init__(self, save_dir):
+        PYLEARN2_TRAIN_DIR = preprocess('${PYLEARN2_TRAIN_DIR}')
+        PYLEARN2_TRAIN_BASE_NAME = preprocess('${PYLEARN2_TRAIN_BASE_NAME}')
+
+        src = os.path.join(PYLEARN2_TRAIN_DIR, PYLEARN2_TRAIN_BASE_NAME)
+        dst = os.path.join(save_dir, PYLEARN2_TRAIN_BASE_NAME)
+
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if os.path.exists(save_dir) and not os.path.isdir(save_dir):
+            raise IOError("save path %s exists, not a directory" % save_dir)
+        elif not os.access(save_dir, os.W_OK):
+            raise IOError("permission error creating %s" % dst)
+
+        with log_timing(log, 'copying yaml from {} to {}'.format(src, dst)):
+            copyfile(src, dst)
+
 
 class SaveEveryEpoch(TrainExtension):
     """
