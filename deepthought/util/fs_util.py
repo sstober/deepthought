@@ -67,7 +67,7 @@ def save(filepath, data, mkdirs=True):
         with gzip.open(filepath, 'wb') as f:
             cPickle.dump(data, f)
     else:
-        raise 'File format not supported for {}'.format(filepath);
+        raise Exception('File format not supported for {}'.format(filepath))
 
 class CallbackFileSytemEventHandler(LoggingEventHandler):
 

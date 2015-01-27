@@ -15,7 +15,7 @@ from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix;
 from pylearn2.utils.timing import log_timing
 from pylearn2.utils import serial;
 
-from pylearn2.utils.one_hot import one_hot;
+from pylearn2.format.target_format import OneHotFormatter
 
 import librosa;  # pip install librosa
 # from sklearn import preprocessing
@@ -29,6 +29,26 @@ class EEGDataset(DenseDesignMatrix):
     '''
     classdocs
     '''
+    class Like(object):
+        """
+        Helper class for lazy people to load an EEGDataset with similar parameters
+
+        Note: This is quite a hack as __new__ should return instances of Like.
+              Instead, it returns the loaded EEGDataset
+        """
+        def __new__(Like,
+                    base,             # reference to copy initialize values from
+                    **override
+        ):
+            params = base.params.copy()
+            log.debug("base params: {}".format(params))
+            log.debug("override params: {}".format(override))
+            for key, value in override.iteritems():
+                params[key] = value
+            log.debug("merged params: {}".format(params))
+
+            return EEGDataset(**params)
+
 
     def __init__(self, 
                  path, suffix='',   # required data file parameters
@@ -54,6 +74,11 @@ class EEGDataset(DenseDesignMatrix):
         '''
         Constructor
         '''
+
+        # save params
+        self.params = locals().copy()
+        del self.params['self']
+        # print self.params
         
         self.name = name;
         
@@ -237,11 +262,13 @@ class EEGDataset(DenseDesignMatrix):
       
         # turn into numpy arrays
         sequences = np.vstack(sequences);
-#         print sequences.shape;
+        print sequences.shape;
         
         labels = np.hstack(labels);        
         
-        one_hot_y = one_hot(labels);
+        # one_hot_y = one_hot(labels)
+        one_hot_formatter = OneHotFormatter(labels.max() + 1)
+        one_hot_y = one_hot_formatter.format(labels)
                 
         self.labels = labels; # save for later
         
@@ -258,8 +285,8 @@ class EEGDataset(DenseDesignMatrix):
             print 'final dataset shape: {} (b,0,1,c)'.format(sequences.shape)
             super(EEGDataset, self).__init__(topo_view=sequences, y=one_hot_y, axes=['b', 0, 1, 'c']);
         else:
-            if layout == 'ft':
-                sequences = sequences.swapaxes(1,2)
+            # if layout == 'ft':
+            #     sequences = sequences.swapaxes(1,2)
 
             super(EEGDataset, self).__init__(X=sequences, y=one_hot_y, axes=['b', 0, 1, 'c']);
         

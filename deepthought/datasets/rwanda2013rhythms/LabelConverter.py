@@ -185,7 +185,7 @@ class LabelConverter(object):
         '''
         Constructor
         '''
-        self.shuffle_classes = np.zeros(48);
+        self.shuffle_classes = np.zeros(48, dtype=np.int8);
         
         self.class_labels = {};
         self.class_labels['rhythm'] = audio_files;
@@ -217,6 +217,8 @@ class LabelConverter(object):
             rhythm_meta_labels = meta_labels[i % 24]; # map down to 24 classes
             mapped_rhythm_id = swapped_meta_labels.index(rhythm_meta_labels);
             self.shuffle_classes[i] = mapped_rhythm_id;
+
+            labels['rhythm_meta'] = rhythm_meta_labels
             
 #             labels['rhythm'] = mapped_rhythm_id; #'{}{}{}'.format(*rhythm_meta_labels);             
 #             self.stimulus_id_map[audio_file] = mapped_rhythm_id; # i;        
