@@ -1,0 +1,119 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:deepthought.datasets.eeg.MultiChannelEEGSequencesDataset {
+        name : 'train',
+        path : "${DEEPTHOUGHT_DATA_PATH}/mpi2015/eeg.python",
+        
+        subjects : ['p3'],    
+        trial_types : 'perception',
+        trial_numbers: [001],
+
+        label_map: &label_map {
+            1: 0, 2: 1, 3: 2, 4: 3, 11: 4, 12: 5, 13: 6, 14: 7, 21: 8, 22: 9, 23: 10, 24: 11,
+        },
+        # partitioner: &partitioner !obj:deepthought.datasets.partition.SimpleDatasetPartitioner {
+        #     p_valid : 10, #(p_valid)f,
+        #     p_test  : 10, #(p_test)f,
+        #     random_seed : 13, #FIXME
+        # },
+        # channel_filter: !obj:deepthought.datasets.eeg.channel_filter.RemoveChannelsByNumber {
+        #     remove_channels : [64, 65, 66, 67] # remove channels EXT1-4
+        # },
+        channel_filter: !obj:deepthought.datasets.eeg.channel_filter.KeepChannelsByNumber {
+            keep_channels : [0,1] # just keep the first 2 channels 
+        },
+        channel_names: &channel_names !obj:deepthought.datasets.eeg.biosemi64.ChannelNameLoader {
+        },
+        
+        remove_dc_offset : True,
+        frame_size : 5,
+        hop_size: 1,
+        # frame_size : ,
+        hop_fraction : ,
+
+        target_mode: 'next', 
+    },
+
+    model: &model !obj:pylearn2.sandbox.rnn.models.rnn.RNN {
+        # NOTE: Recurrent layer needs a SequenceSpace(VectorSpace) or SequenceDataSpace(VectorSpace)
+        input_space: !obj:pylearn2.sandbox.rnn.space.SequenceDataSpace {
+            space: !obj:pylearn2.space.VectorSpace {
+                dim: &nchannels 2,
+            },
+        },
+    
+        layers: [
+
+            !obj:pylearn2.models.mlp.RectifiedLinear {
+                layer_name: 'l1',
+                dim: 16,
+                irange: 0.01,        
+            },
+            !obj:pylearn2.sandbox.rnn.models.rnn.LSTM {
+                layer_name: 'recurrent_layer',
+                dim: 25,
+                irange: 0.01,
+                monitor_style: "classification", # does not change anything
+            },
+            # !obj:pylearn2.models.mlp.Softmax {
+            #     layer_name: 'softmax',
+            #     n_classes: 12,
+            #     irange: 0.01,
+            #     binary_target_dim: 1,
+            # }
+            !obj:pylearn2.models.mlp.RectifiedLinear {
+                layer_name: 'output',
+                dim: *nchannels,
+                irange: 0.01,        
+            },
+
+        ],
+
+        # use_monitoring_channels: 1, # FIXME in pylearn2: get_layer_monitoring_channels is broken in RNN
+        monitor_targets: True, # needs to be switched off for pre-training and on for classification
+    },
+    
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: 0.001,
+        batch_size: 100,
+        # monitoring_batch_size: 1,
+        
+        monitoring_dataset: {
+                'train' : *train,
+                # 'valid' : &valid !obj:deepthought.datasets.eeg.MultiChannelEEGSequencesDataset.Like {
+                #                 base: *train,
+                #                 name: 'valid',
+                #             },
+                # 'test'  : &test !obj:deepthought.datasets.eeg.MultiChannelEEGSequencesDataset.Like {
+                #                 base: *train,
+                #                 name: 'test',
+                #             },
+        },
+
+        cost: !obj:pylearn2.sandbox.rnn.costs.gradient_clipping.GradientClipping {
+            clipping_value: 1,
+            # cost: !obj:pylearn2.costs.mlp.Default {}
+            cost: !obj:deepthought.pylearn2ext.costs.reconstruct.TargetMeanSquaredReconstructionError {},
+        }
+    },
+    
+    extensions: [
+    # !obj:pylearn2.training_algorithms.sgd.MonitorBasedLRAdjuster {
+    #   low_trigger: 1,
+    #   shrink_amt: 0.9,
+    #   channel_name: 'valid_softmax_nll',
+    # }
+
+        # !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+        #     channel_name: 'valid_objective',
+        #     save_path: &model_path !!python/object/apply:os.path.join ['./', 'best.pkl'],
+        # },
+
+        !obj:deepthought.pylearn2ext.monitor.rnn.DataDumper {
+            model: *model,
+            # dataset: *test,
+            dataset: *train,
+        },
+    ],
+    
+    # save_freq: 1,
+}

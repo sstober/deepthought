@@ -22,7 +22,7 @@ from pylearn2.utils.string_utils import preprocess
 import os
 from shutil import copyfile
             
-def process_dataset(model, dataset, data_specs=None, output_fn=None):
+def process_dataset(model, dataset, data_specs=None, output_fn=None, batch_size=None):
     
     if data_specs is None:
         data_specs = (CompositeSpace((
@@ -36,8 +36,8 @@ def process_dataset(model, dataset, data_specs=None, output_fn=None):
             output_fn = theano.function(inputs=[minibatch], 
                                         outputs=model.fprop(minibatch));
     
-    it = dataset.iterator('sequential',
-                          batch_size=100,
+    it = dataset.iterator(mode='sequential',
+                          batch_size=batch_size,
                           data_specs=data_specs);
     y_pred = [];
     y_real = [];                
@@ -45,6 +45,8 @@ def process_dataset(model, dataset, data_specs=None, output_fn=None):
     for minibatch, target in it:
         out = output_fn(minibatch); # this hangs for convnet on Jeep2
         output.append(out);
+        print out
+        print out.shape
         y_pred.append(np.argmax(out, axis = 1));
         y_real.append(np.argmax(target, axis = 1));
     y_pred = np.hstack(y_pred);
