@@ -1,1 +1,4 @@
 __author__ = 'sstober'
+
+from MultiChannelEEGDataset import MultiChannelEEGDataset
+from MultiChannelEEGSequencesDataset import MultiChannelEEGSequencesDataset

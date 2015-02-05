@@ -33,10 +33,10 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
     """
     class Like(object):
         """
-        Helper class for lazy people to load an MultiChannelEEGDataset with similar parameters
+        Helper class for lazy people to load an MultiChannelEEGSequencesDataset with similar parameters
 
         Note: This is quite a hack as __new__ should return instances of Like.
-              Instead, it returns the loaded MultiChannelEEGDataset
+              Instead, it returns the loaded MultiChannelEEGSequencesDataset
         """
         def __new__(Like,
                     base,             # reference to copy initialize values from
