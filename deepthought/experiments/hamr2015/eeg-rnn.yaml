@@ -20,19 +20,18 @@
         },
         channel_names: &channel_names !obj:deepthought.datasets.eeg.biosemi64.ChannelNameLoader {
         },
+
+        # FIXME: uses only a part of each trial
+        start_sample : 1536,    # = 3s
+        stop_sample  : 3027,    # = 6s
         
         remove_dc_offset : True,
-        frame_size : 512,
+        frame_size : 5, # 512
         hop_size: 1,
         # frame_size : ,
         hop_fraction : ,
 
-        n_fft : ,                      # None (empty) = raw signal
-        n_freq_bins : ,
-        include_phase : False,
-        spectrum_log_amplitude : True,
-        spectrum_normalization_mode : linear_0_1,   
-        layout : 'ft',  
+        target_mode : 'label',  
     },
 
     model: &model !obj:pylearn2.sandbox.rnn.models.rnn.RNN {

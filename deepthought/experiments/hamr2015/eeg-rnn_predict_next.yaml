@@ -44,13 +44,14 @@
         layers: [
 
             !obj:pylearn2.models.mlp.RectifiedLinear {
-                layer_name: 'l1',
+                layer_name: 'dim_reduction',
                 dim: 16,
                 irange: 0.01,        
             },
-            !obj:pylearn2.sandbox.rnn.models.rnn.LSTM {
+            # !obj:pylearn2.sandbox.rnn.models.rnn.Recurrent { # does not work -> 'NoneType' error
+            !obj:pylearn2.sandbox.rnn.models.rnn.LSTM { # cost not implemented -> needs cost implementation
                 layer_name: 'recurrent_layer',
-                dim: 25,
+                dim: 5,
                 irange: 0.01,
                 monitor_style: "classification", # does not change anything
             },
@@ -91,7 +92,7 @@
 
         cost: !obj:pylearn2.sandbox.rnn.costs.gradient_clipping.GradientClipping {
             clipping_value: 1,
-            # cost: !obj:pylearn2.costs.mlp.Default {}
+            # cost: !obj:pylearn2.costs.mlp.Default {},
             cost: !obj:deepthought.pylearn2ext.costs.reconstruct.TargetMeanSquaredReconstructionError {},
         }
     },
@@ -108,11 +109,11 @@
         #     save_path: &model_path !!python/object/apply:os.path.join ['./', 'best.pkl'],
         # },
 
-        !obj:deepthought.pylearn2ext.monitor.rnn.DataDumper {
-            model: *model,
-            # dataset: *test,
-            dataset: *train,
-        },
+        # !obj:deepthought.pylearn2ext.monitor.rnn.DataDumper {
+        #     model: *model,
+        #     # dataset: *test,
+        #     dataset: *train,
+        # },
     ],
     
     # save_freq: 1,

@@ -161,7 +161,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
         if target_mode == 'next':
             # get 1 more value per frame as target
             frame_size += 1
-        print 'frame size: {}'.format(frame_size)
+        # print 'frame size: {}'.format(frame_size)
 
         for i in xrange(len(self.datafiles)):        
             with log_timing(log, 'loading data from {}'.format(self.datafiles[i])): 
@@ -200,6 +200,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
                     # get sub-sequence in resampled space
                     # log.info('using samples {}..{} of {}'.format(start_sample,stop_sample, samples.shape))
                     samples = samples[start_sample:stop_sample]
+                    # print start_sample, stop_sample, samples.shape
 
                     # if n_fft is not None and n_fft > 0: # Optionally:
                     #     ### frequency spectrum branch ###
@@ -301,7 +302,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
                     s = np.asfarray(s, dtype='float32')
 
                     if frame_size > 0 and hop_size > 0:
-                        print 'frame size: {}'.format(frame_size)
+                        # print 'frame size: {}'.format(frame_size)
                         s = s.copy() # FIXME: THIS IS NECESSARY - OTHERWISE, THE FOLLOWING OP DOES NOT WORK!!!!
                         frames = compute_frames(s, frame_length=frame_size, hop_length=hop_size)
                         # frames = librosa.util.frame(s, frame_length=frame_size, hop_length=hop_size)
@@ -416,7 +417,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
 
         # sequences = sequences.reshape(sequences.shape[0]*sequences.shape[1], sequences.shape[2])
 
-        print sequences.shape
+        print 'sequences: {}'.format(sequences.shape)
         
         labels = np.hstack(labels)
         self.labels = labels
@@ -440,7 +441,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
             print targets.shape
 
         elif target_mode == 'next':
-            targets = np.hstack(targets)
+            targets = np.concatenate(targets)
             targets = targets.reshape((targets.shape[0], 1, targets.shape[1]))
         print 'targets: {}'.format(targets.shape)
 
@@ -461,7 +462,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
         #     VectorSpace(dim=12),
         # ])
 
-        if target_mode == 'target':
+        if target_mode == 'label':
             space = CompositeSpace([
                 SequenceDataSpace(VectorSpace(dim=n_channels)),
                 # SequenceDataSpace(VectorSpace(dim=12)),
@@ -476,6 +477,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
 
                 SequenceDataSpace(VectorSpace(dim=n_channels)),
                 SequenceDataSpace(VectorSpace(dim=n_channels))
+                # VectorSpace(dim=n_channels)
             ])
 
 
@@ -492,7 +494,7 @@ class MultiChannelEEGSequencesDataset(VectorSpacesDataset):
         #     # FIXME: looks OK
 
         # SequenceDataSpace(IndexSpace(dim=1, max_labels=self._max_labels)),
-        if target_mode == 'target':
+        if target_mode == 'label':
             super(MultiChannelEEGSequencesDataset, self).__init__(
                 # data=(sequences, one_hot_y),  # works with vectorspace-target
                 data=(sequences, targets),       # works with indexspace-target
