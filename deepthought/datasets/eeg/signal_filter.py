@@ -5,6 +5,7 @@ from mne.filter import low_pass_filter, high_pass_filter, band_pass_filter, band
 from mne import pick_types
 import numpy as np
 import librosa
+import mne
 
 class MNEFilterWrapper():
 
