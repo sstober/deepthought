@@ -31,7 +31,7 @@ class MNEFilterWrapper():
 ## old interface from mne/filter.py:
 # def resample(self, sfreq, npad=100, window='boxcar',
 #              stim_picks=None, n_jobs=1, verbose=None):
-def fast_resample_mne(raw, sfreq, stim_picks=None, res_type='sinc_best', verbose=None):
+def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_type='sinc_best', verbose=None):
     """Resample data channels.
 
     Resamples all channels. The data of the Raw object is modified inplace.
@@ -85,6 +85,17 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, res_type='sinc_best', verbose
         stim_picks = pick_types(self.info, meg=False, ref_meg=False,
                                 stim=True, exclude=[])
     stim_picks = np.asanyarray(stim_picks)
+
+    ### begin new code: save events in each stim channel ###
+    if preserve_events:
+        stim_events = dict()
+        for sp in stim_picks:
+            stim_channel_name = raw.ch_names[sp]
+            if verbose:
+                print 'saving events for stim channel "{}" (#{})'.format(stim_channel_name, sp)
+            stim_events[sp] = mne.find_events(raw, stim_channel=stim_channel_name, shortest_event=0)
+    ### end new code: save events in each stim channel ###
+
     ratio = sfreq / o_sfreq
     for ri in range(len(self._raw_lengths)):
         data_chunk = self._data[:, offsets[ri]:offsets[ri + 1]]
@@ -99,7 +110,7 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, res_type='sinc_best', verbose
             if verbose:
                 print 'processing channel #{}'.format(i)
             # TODO: this could easily be parallelized
-            new_data_chunk.append(librosa.resample(channel, o_sfreq, sfreq, res_type='sinc_best'))
+            new_data_chunk.append(librosa.resample(channel, o_sfreq, sfreq, res_type=res_type))
 
         new_data_chunk = np.vstack(new_data_chunk)
         if verbose:
@@ -134,3 +145,24 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, res_type='sinc_best', verbose
     self.info['sfreq'] = sfreq
     self._times = (np.arange(self.n_times, dtype=np.float64)
                    / self.info['sfreq'])
+
+    ### begin new code: restore save events in each stim channel ###
+    if preserve_events:
+        for sp in stim_picks:
+            raw._data[sp,:].fill(0)     # delete data in stim channel
+
+            if verbose:
+                stim_channel_name = raw.ch_names[sp]
+                print 'restoring events for stim channel "{}" (#{})'.format(stim_channel_name, sp)
+
+            # scale onset times
+            for event in stim_events[sp]:
+                onset = np.floor(event[0] * ratio)
+                event_id = event[2]
+                if raw._data[sp,onset] > 0:
+                    print '! event collision at {}: old={} new={}. Using onset+1'.format(
+                                onset, raw._data[sp,onset], event_id)
+                    raw._data[sp,onset+1] = event_id
+                else:
+                    raw._data[sp,onset] = event_id
+    ### end new code: save events in each stim channel ###
