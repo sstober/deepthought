@@ -99,6 +99,9 @@ class MultiChannelEEGDataset(DenseDesignMatrix):
                  start_sample = 0,
                  stop_sample  = None,   # optional for selection of sub-sequences
 
+                 # optional signal filter to by applied before spitting the signal
+                 signal_filter = None,
+
                  # windowing parameters
                  frame_size = -1,
                  hop_size   = -1,       # values > 0 will lead to windowing
@@ -204,7 +207,11 @@ class MultiChannelEEGDataset(DenseDesignMatrix):
 
                     # down-sample if requested
                     if resample is not None and resample[0] != resample[1]:
-                        s = librosa.resample(s, resample[0], resample[1])
+                        samples = librosa.resample(samples, resample[0], resample[1])
+
+                    # apply optional signal filter after down-sampling -> requires lower order
+                    if signal_filter is not None:
+                        samples = signal_filter.process(samples)
 
                     # get sub-sequence in resampled space
                     # log.info('using samples {}..{} of {}'.format(start_sample,stop_sample, samples.shape))
@@ -305,10 +312,11 @@ class MultiChannelEEGDataset(DenseDesignMatrix):
                         # print s.shape
 
                         ### end of raw waveform branch ###
-                    
+
                     s = np.asfarray(s, dtype='float32')
 
                     if frame_size > 0 and hop_size > 0:
+                        s = s.copy() # FIXME: THIS IS NECESSARY IN MultiChannelEEGSequencesDataset - OTHERWISE, THE FOLLOWING OP DOES NOT WORK!!!!
                         frames = frame(s, frame_length=frame_size, hop_length=hop_size)
                     else:
                         frames = s

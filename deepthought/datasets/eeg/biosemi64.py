@@ -211,6 +211,20 @@ class Biosemi64Layout(ChannelLayout):
 
         return self.__PROJECTED_XY_COORDS
 
+    def as_montage(self):
+        from mne.channels.layout import Montage
+        pos = self.xyz_coords()
+        # print pos[1,:]
+        pos = pos[:,[1,0,2]]  # swap x and y
+        # print pos[1,:]
+        pos *= [1, -1, 1]  # flip y
+        # print pos[1,:]
+        montage = Montage(pos=pos,
+                          ch_names=self.channel_names(),
+                          kind='64channels',                # FIXME: no idea what this should be
+                          selection=list(range(64)))
+        return montage
+
 # EXT_CHANNEL_NAMES = ['EXT1', 'EXT2', 'EXT3', 'EXT4']
 #
 # NUM_EEG_CHANNELS = len(EEG_CHANNEL_NAMES)
