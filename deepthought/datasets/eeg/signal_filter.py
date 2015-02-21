@@ -1,5 +1,8 @@
 __author__ = 'sstober'
 
+import logging
+log = logging.getLogger(__name__)
+
 from mne.filter import low_pass_filter, high_pass_filter, band_pass_filter, band_stop_filter, notch_filter
 
 from mne import pick_types
@@ -93,7 +96,7 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
         for sp in stim_picks:
             stim_channel_name = raw.ch_names[sp]
             if verbose:
-                print 'saving events for stim channel "{}" (#{})'.format(stim_channel_name, sp)
+                log.info('saving events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
             stim_events[sp] = mne.find_events(raw, stim_channel=stim_channel_name, shortest_event=0)
     ### end new code: save events in each stim channel ###
 
@@ -105,11 +108,11 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
 #         new_data.append(resample(data_chunk, sfreq, o_sfreq, npad,
 #                                  n_jobs=n_jobs))
         if verbose:
-            print 'resampling {} channels...'.format(len(data_chunk))
+            log.info('resampling {} channels...'.format(len(data_chunk)))
         new_data_chunk = list()
         for i, channel in enumerate(data_chunk):
             if verbose:
-                print 'processing channel #{}'.format(i)
+                log.info('processing channel #{}'.format(i))
             # TODO: this could easily be parallelized
             new_data_chunk.append(librosa.resample(channel, o_sfreq, sfreq, res_type=res_type))
 
@@ -154,16 +157,36 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
 
             if verbose:
                 stim_channel_name = raw.ch_names[sp]
-                print 'restoring events for stim channel "{}" (#{})'.format(stim_channel_name, sp)
+                log.info('restoring events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
 
             # scale onset times
             for event in stim_events[sp]:
-                onset = np.floor(event[0] * ratio)
+                onset = int(np.floor(event[0] * ratio))
                 event_id = event[2]
                 if raw._data[sp,onset] > 0:
-                    print '! event collision at {}: old={} new={}. Using onset+1'.format(
-                                onset, raw._data[sp,onset], event_id)
+                    log.warn('! event collision at {}: old={} new={}. Using onset+1'.format(
+                                onset, raw._data[sp,onset], event_id))
                     raw._data[sp,onset+1] = event_id
                 else:
                     raw._data[sp,onset] = event_id
     ### end new code: save events in each stim channel ###
+
+
+def resample_mne_events(events, o_sfreq, sfreq, fix_collisions=True):
+    ratio = sfreq / o_sfreq
+    resampled_events = list()
+    for event in events:
+        onset = int(np.floor(event[0] * ratio))
+        event_id = event[2]
+
+        if fix_collisions and \
+            len(resampled_events) > 0 and \
+            resampled_events[-1][0] == onset:
+
+            log.warn('! event collision at {}: old={} new={}. Using onset+1'.format(
+                        onset, resampled_events[-1][0], event_id))
+            onset += 1
+
+        resampled_events.append([onset, 0, event_id])
+
+    return np.asarray(resampled_events)
