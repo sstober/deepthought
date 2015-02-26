@@ -228,6 +228,17 @@ class EEGEpochsDataset(DenseDesignMatrix):
             # processed_epoch = processed_epoch.reshape((1, processed_epoch.shape))
             processed_epoch = np.rollaxis(processed_epoch, 1, 4)
 
+            # FIXME: hard-coded for balancing classes
+            if db.metadata[epoch_i]['stimulus_id'] in [23,24]:
+                # add twice to double the number of examples for stimuli with only 4 bars
+                epochs.append(processed_epoch)
+                labels.append(label)
+                meta.append(db.metadata[epoch_i])
+                # print 'adding epoch {} twice for stimulus {}'.format(epoch_i, db.metadata[epoch_i]['stimulus_id'])
+            elif db.metadata[epoch_i]['bar_no'] > 7:
+                # print 'discarding epoch {}, bar {} > 7'.format(epoch_i, db.metadata[epoch_i]['bar_no'])
+                continue # skip bars 8-16
+
             epochs.append(processed_epoch)
             labels.append(label)
             meta.append(db.metadata[epoch_i])
