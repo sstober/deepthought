@@ -22,7 +22,7 @@ from pylearn2.utils.string_utils import preprocess
 import os
 from shutil import copyfile
             
-def process_dataset(model, dataset, data_specs=None, output_fn=None, batch_size=None):
+def process_dataset(model, dataset, data_specs=None, output_fn=None, batch_size=128):
     
     if data_specs is None:
         data_specs = (CompositeSpace((
@@ -45,8 +45,8 @@ def process_dataset(model, dataset, data_specs=None, output_fn=None, batch_size=
     for minibatch, target in it:
         out = output_fn(minibatch); # this hangs for convnet on Jeep2
         output.append(out);
-        print out
-        print out.shape
+        # print out
+        # print out.shape
         y_pred.append(np.argmax(out, axis = 1));
         y_real.append(np.argmax(target, axis = 1));
     y_pred = np.hstack(y_pred);
