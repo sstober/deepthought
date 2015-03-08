@@ -180,7 +180,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
         # self.metadata
         for epoch_i in selected_epoch_ids:
 
-            label = db.metadata[epoch_i]['meter']  #FIXME
+            label = db.metadata[epoch_i][label_attribute]
             if label_map is not None:
                 label = label_map[label]
 
