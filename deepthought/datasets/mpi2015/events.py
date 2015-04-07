@@ -7,6 +7,9 @@ import numpy as np
 
 KEYSTROKE_BASE_ID = 2000
 
+def get_event_id(stimulus_id, condition):
+    return stimulus_id * 10 + condition
+
 def decode_event_id(event_id):
     if event_id < 1000:
         stimulus_id = event_id / 10

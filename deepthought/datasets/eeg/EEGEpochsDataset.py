@@ -5,54 +5,32 @@ import os
 import logging
 log = logging.getLogger(__name__)
 
-import collections
 import numpy as np
 
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 from pylearn2.utils.timing import log_timing
-from pylearn2.utils import serial
 
 from pylearn2.format.target_format import OneHotFormatter
 
 import librosa
 
 from deepthought.util.fs_util import load
-from deepthought.util.timeseries_util import frame
 from deepthought.datasets.eeg.channel_filter import NoChannelFilter
 
+from deepthought.datasets.selection import DatasetMetaDB
 
-def build_epoch_metadb(metadata):
-    def tree():
-        return collections.defaultdict(tree)
-
-    def multi_dimensions(n, dtype):
-        """ Creates an n-dimension dictionary where the n-th dimension is of type 'type'
-        """
-        if n == 0:
-            return dtype()
-        return collections.defaultdict(lambda:multi_dimensions(n-1, dtype))
-
-    metadb = multi_dimensions(4, list)
-
-#     datafiles = collections.defaultdict(lambda:collections.defaultdict(lambda:collections.defaultdict(list)))
-
-    for i, epoch_meta in enumerate(metadata):
-        subject = epoch_meta['subject']
-        trial_type = epoch_meta['trial_type']
-        trial_number = epoch_meta['trial_no']
-        condition = epoch_meta['condition']
-
-        metadb[subject][trial_type][trial_number][condition].append(i)
-        log.debug('{} {} {} {} : {}'.format(subject,trial_type,trial_number,condition,i))
-
-    return metadb
-
-class EpochsFile(object):
+class DataFile(object):
     def __init__(self, filepath):
         self.filepath = filepath
         with log_timing(log, 'loading data from {}'.format(filepath)):
-            self.data, self.metadata = load(filepath)
-
+            tmp = load(filepath)
+            if len(tmp) == 2:
+                self.data, self.metadata = tmp
+                self.targets = None
+            elif len(tmp) == 3:
+                self.data, self.metadata, self.targets = tmp
+            else:
+                raise ValueError('got {} objects instead of 2 or 3.'.format(len(tmp)))
 
 class EEGEpochsDataset(DenseDesignMatrix):
     """
@@ -60,10 +38,10 @@ class EEGEpochsDataset(DenseDesignMatrix):
     """
     class Like(object):
         """
-        Helper class for lazy people to load an MultiChannelEEGDataset with similar parameters
+        Helper class for lazy people to load an EEGEpochsDataset with similar parameters
 
         Note: This is quite a hack as __new__ should return instances of Like.
-              Instead, it returns the loaded MultiChannelEEGDataset
+              Instead, it returns the loaded EEGEpochsDataset
         """
         def __new__(Like,
                     base,             # reference to copy initialize values from
@@ -83,13 +61,9 @@ class EEGEpochsDataset(DenseDesignMatrix):
                  db,
                  name = '',         # optional name
 
-                 # selectors
-                 subjects='all',        # optional selector (list) or 'all'
-                 trial_types='all',     # optional selector (list) or 'all'
-                 trial_numbers='all',   # optional selector (list) or 'all'
-                 conditions='all',      # optional selector (list) or 'all'
+                 selectors = dict(),
 
-                 # partitioner = None,
+                 partitioner = None,
 
                  channel_filter = NoChannelFilter(),   # optional channel filter, default: keep all
                  channel_names = None,  # optional channel names (for metadata)
@@ -107,23 +81,9 @@ class EEGEpochsDataset(DenseDesignMatrix):
                  # optional signal filter to by applied before spitting the signal
                  signal_filter = None,
 
-                 # # windowing parameters
-                 # frame_size = -1,
-                 # hop_size   = -1,       # values > 0 will lead to windowing
-                 # hop_fraction = None,   # alternative to specifying absolute hop_size
+                 target_processor = None, # optional processing of the targets, e.g. zero-padding
 
-                 # # optional spectrum parameters, n_fft = 0 keeps raw data
-                 # n_fft = 0,
-                 # n_freq_bins = None,
-                 # spectrum_log_amplitude = False,
-                 # spectrum_normalization_mode = None,
-                 # include_phase = False,
-                 #
-                 # flatten_channels=False,
                  layout='tf',       # (0,1)-axes layout tf=time x features or ft=features x time
-
-                 # save_matrix_path = None,
-                 # keep_metadata = False,
                  ):
         '''
         Constructor
@@ -134,65 +94,46 @@ class EEGEpochsDataset(DenseDesignMatrix):
         del self.params['self']
         # print self.params
 
-        # TODO: get the whole filtering into an extra class
-
-
-        metadb = build_epoch_metadb(db.metadata)
-#         print metadb
-
-        def apply_filters(filters, node):
-            if isinstance(node, dict):
-                filtered = []
-                keepkeys = filters[0]
-                for key, value in node.items():
-                    if keepkeys == 'all' or key in keepkeys:
-                        filtered.extend(apply_filters(filters[1:], value))
-                return filtered
-            else:
-                return node # [node]
-
-        if name == 'train':
-            trial_numbers = list(range(1*12, 4*12))
-        elif name == 'valid':
-            trial_numbers = list(range(4*12, 5*12))
-        elif name == 'test':
-            trial_numbers = list(range(0*12, 1*12))
-        else:
-            raise ValueError('Unknown name: {}'.format(name))
-
-        # keep only files that match the metadata filters
-        selected_epoch_ids = apply_filters([subjects,trial_types,trial_numbers,conditions], metadb)
-
-        # FIXME: hard-coded selector (above)
-        # if partitioner is not None:
-        #     self.datafiles = partitioner.get_partition(self.name, self.metadb)
-
-
-        print selected_epoch_ids
-
-#         print self.metadb
-
         self.name = name
 
-        epochs = list()
+        metadb = DatasetMetaDB(db.metadata, selectors.keys())
+
+        if partitioner is not None:
+            pass # FIXME
+
+        selected_trial_ids = metadb.select(selectors)
+        print selected_trial_ids
+
+
+        trials = list()
         labels = list()
+        targets = list()
         meta = list()
-        # self.metadata
-        for epoch_i in selected_epoch_ids:
 
-            label = db.metadata[epoch_i][label_attribute]
-            if label_map is not None:
-                label = label_map[label]
+        for trial_i in selected_trial_ids:
 
-            processed_epoch = []
+            if db.targets is None:
+                # get and process label
+                label = db.metadata[trial_i][label_attribute]
+                if label_map is not None:
+                    label = label_map[label]
+
+            processed_trial = []
+
+            trial = db.data[trial_i]
+
+            if np.isnan(np.sum(trial)):
+                print trial_i, trial
+
+            assert not np.isnan(np.sum(trial))
 
             # process 1 channel at a time
-            for channel in xrange(db.data.shape[1]):
+            for channel in xrange(trial.shape[0]):
                 # filter channels
                 if not channel_filter.keep_channel(channel):
                     continue
 
-                samples = db.data[epoch_i, channel, :]
+                samples = trial[channel, :]
 
                 # subtract channel mean
                 if remove_dc_offset:
@@ -200,7 +141,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                 # down-sample if requested
                 if resample is not None and resample[0] != resample[1]:
-                    samples = librosa.resample(samples, resample[0], resample[1])
+                    samples = librosa.resample(samples, resample[0], resample[1], res_type='sinc_best')
 
                 # apply optional signal filter after down-sampling -> requires lower order
                 if signal_filter is not None:
@@ -209,6 +150,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
                 # get sub-sequence in resampled space
                 # log.info('using samples {}..{} of {}'.format(start_sample,stop_sample, samples.shape))
                 samples = samples[start_sample:stop_sample]
+
+                # TODO optional channel processing
 
                 # normalize to max amplitude 1
                 s = librosa.util.normalize(samples)
@@ -219,51 +162,62 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                 s = np.asfarray(s, dtype='float32')
 
-                processed_epoch.append(s)
+                processed_trial.append(s)
 
                 ### end of channel iteration ###
 
-            processed_epoch = np.asfarray([processed_epoch], dtype='float32')
+            processed_trial = np.asfarray([processed_trial], dtype='float32')
 
-            # processed_epoch = processed_epoch.reshape((1, processed_epoch.shape))
-            processed_epoch = np.rollaxis(processed_epoch, 1, 4)
+            # TODO optional trial processing
+            # TODO optional windowing
 
-            # FIXME: hard-coded for balancing classes
-            if db.metadata[epoch_i]['stimulus_id'] in [23,24]:
-                # add twice to double the number of examples for stimuli with only 4 bars
-                epochs.append(processed_epoch)
+            # processed_trial = processed_trial.reshape((1, processed_trial.shape))
+            processed_trial = np.rollaxis(processed_trial, 1, 4)
+
+            trials.append(processed_trial)
+            meta.append(db.metadata[trial_i])
+
+            if db.targets is None:
                 labels.append(label)
-                meta.append(db.metadata[epoch_i])
-                # print 'adding epoch {} twice for stimulus {}'.format(epoch_i, db.metadata[epoch_i]['stimulus_id'])
-            elif db.metadata[epoch_i]['bar_no'] > 7:
-                # print 'discarding epoch {}, bar {} > 7'.format(epoch_i, db.metadata[epoch_i]['bar_no'])
-                continue # skip bars 8-16
+            else:
+                target = db.targets[trial_i]
 
-            epochs.append(processed_epoch)
-            labels.append(label)
-            meta.append(db.metadata[epoch_i])
+                if np.isnan(np.sum(target)):
+                    print trial_i, meta[-1], target
 
+                assert not np.isnan(np.sum(target))
+
+                if target_processor is not None:
+                    target = target_processor.process(target)
+
+                assert not np.isnan(np.sum(target))
+
+                targets.append(target)
 
         ### end of datafile iteration ###
 
         # turn into numpy arrays
-        epochs = np.vstack(epochs)
-        # print sequences.shape;
+        self.trials = np.vstack(trials)
 
-        labels = np.hstack(labels)
+        assert not np.isnan(np.sum(self.trials))
 
-        # one_hot_y = one_hot(labels)
-        one_hot_formatter = OneHotFormatter(labels.max() + 1) # FIXME!
-        one_hot_y = one_hot_formatter.format(labels)
+        if db.targets is None:
+            labels = np.hstack(labels)
+            one_hot_formatter = OneHotFormatter(labels.max() + 1) # FIXME!
+            one_hot_y = one_hot_formatter.format(labels)
+            self.targets = labels
+        else:
+            self.targets = np.vstack(targets)
 
-        self.labels = labels
+            assert not np.isnan(np.sum(self.targets))
+
         self.metadata = meta
 
         if layout == 'ft': # swap axes to (batch, feature, time, channels)
-            epochs = epochs.swapaxes(1, 2)
+            self.trials = self.trials.swapaxes(1, 2)
 
-        log.debug('final dataset shape: {} (b,0,1,c)'.format(epochs.shape))
-        super(EEGEpochsDataset, self).__init__(topo_view=epochs, y=one_hot_y, axes=['b', 0, 1, 'c'])
+        log.debug('final dataset shape: {} (b,0,1,c)'.format(self.trials.shape))
+        super(EEGEpochsDataset, self).__init__(topo_view=self.trials, y=self.targets, axes=['b', 0, 1, 'c'])
 
-        log.info('generated dataset "{}" with shape X={}={} y={} labels={} '.
-                 format(self.name, self.X.shape, epochs.shape, self.y.shape, self.labels.shape))
+        log.info('generated dataset "{}" with shape X={}={} y={} targets={} '.
+                 format(self.name, self.X.shape, self.trials.shape, self.y.shape, self.targets.shape))

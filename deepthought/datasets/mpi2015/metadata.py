@@ -13,6 +13,25 @@ from deepthought.datasets.mpi2015.constants import STIMULUS_IDS
 
 DEFAULT_VERSION = 1
 
+def get_stimuli_version(subject):
+    if subject in ['Pilot3','P01','P04','P05','P06','P07','P09']:
+        return 1
+    else:
+        return 2
+
+def get_audio_filepath(stim_id, data_root=None, version=None):
+
+    if version is None:
+        version = DEFAULT_VERSION
+
+    if data_root is None:
+        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+
+    meta = load_stimuli_metadata(data_root=data_root, version=version)
+
+    return os.path.join(data_root, 'audio', 'full.v{}'.format(version),
+                        meta[stim_id]['audio_file'])
+
 def load_stimuli_metadata(data_root=None, version=None):
 
     if version is None:
