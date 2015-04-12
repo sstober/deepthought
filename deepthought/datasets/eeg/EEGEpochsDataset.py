@@ -70,6 +70,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                  label_attribute = 'label', # metadata attribute to be used as label
                  label_map = None,      # optional conversion of labels
+                 use_targets = True,    # use targets if provides, otherwise labels are used
 
                  remove_dc_offset = False,  # optional subtraction of channel mean, usually done already earlier
                  resample = None,       # optional down-sampling
@@ -112,7 +113,17 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         for trial_i in selected_trial_ids:
 
-            if db.targets is None:
+            if use_targets and db.targets is not None:
+                target = db.targets[trial_i]
+
+                assert not np.isnan(np.sum(target))
+
+                if target_processor is not None:
+                    target = target_processor.process(target)
+
+                assert not np.isnan(np.sum(target))
+            else:
+                target = None
                 # get and process label
                 label = db.metadata[trial_i][label_attribute]
                 if label_map is not None:
@@ -149,6 +160,12 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                 # get sub-sequence in resampled space
                 # log.info('using samples {}..{} of {}'.format(start_sample,stop_sample, samples.shape))
+
+                if stop_sample is not None and stop_sample > len(samples):
+                    tmp = np.zeros(stop_sample)
+                    tmp[:len(samples)] = samples
+                    samples = tmp
+
                 samples = samples[start_sample:stop_sample]
 
                 # TODO optional channel processing
@@ -177,21 +194,9 @@ class EEGEpochsDataset(DenseDesignMatrix):
             trials.append(processed_trial)
             meta.append(db.metadata[trial_i])
 
-            if db.targets is None:
+            if target is None:
                 labels.append(label)
             else:
-                target = db.targets[trial_i]
-
-                if np.isnan(np.sum(target)):
-                    print trial_i, meta[-1], target
-
-                assert not np.isnan(np.sum(target))
-
-                if target_processor is not None:
-                    target = target_processor.process(target)
-
-                assert not np.isnan(np.sum(target))
-
                 targets.append(target)
 
         ### end of datafile iteration ###
@@ -201,15 +206,14 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         assert not np.isnan(np.sum(self.trials))
 
-        if db.targets is None:
+        if use_targets and db.targets is not None:
+            self.targets = np.vstack(targets)
+            assert not np.isnan(np.sum(self.targets))
+        else:
             labels = np.hstack(labels)
             one_hot_formatter = OneHotFormatter(labels.max() + 1) # FIXME!
             one_hot_y = one_hot_formatter.format(labels)
-            self.targets = labels
-        else:
-            self.targets = np.vstack(targets)
-
-            assert not np.isnan(np.sum(self.targets))
+            self.targets = one_hot_y
 
         self.metadata = meta
 

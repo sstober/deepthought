@@ -14,7 +14,7 @@ from deepthought.datasets.mpi2015.constants import STIMULUS_IDS
 DEFAULT_VERSION = 1
 
 def get_stimuli_version(subject):
-    if subject in ['Pilot3','P01','P04','P05','P06','P07','P09']:
+    if subject in ['Pilot3','P01','P04','P05','P06','P07']:
         return 1
     else:
         return 2
