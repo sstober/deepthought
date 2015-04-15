@@ -1,7 +1,5 @@
 __author__ = 'sstober'
 
-import os
-
 import logging
 log = logging.getLogger(__name__)
 
@@ -82,7 +80,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
                  # optional signal filter to by applied before spitting the signal
                  signal_filter = None,
 
-                 target_processor = None, # optional processing of the targets, e.g. zero-padding
+                 target_processor = None,   # optional processing of the targets, e.g. zero-padding
+                 transformers = [],         # optional transformations of the dataset
 
                  layout='tf',       # (0,1)-axes layout tf=time x features or ft=features x time
                  ):
@@ -219,6 +218,9 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         if layout == 'ft': # swap axes to (batch, feature, time, channels)
             self.trials = self.trials.swapaxes(1, 2)
+
+        for transformer in transformers:
+            self.trials, self.targets = transformer.process(self.trials, self.targets)
 
         log.debug('final dataset shape: {} (b,0,1,c)'.format(self.trials.shape))
         super(EEGEpochsDataset, self).__init__(topo_view=self.trials, y=self.targets, axes=['b', 0, 1, 'c'])
