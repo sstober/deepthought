@@ -76,6 +76,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
                  # optional sub-sequences selection
                  start_sample = 0,
                  stop_sample  = None,   # optional for selection of sub-sequences
+                 zero_padding = True,   # if True (default) trials that are too short will be padded with
+                                        # otherwise they will rejected.
 
                  # optional signal filter to by applied before spitting the signal
                  signal_filter = None,
@@ -137,6 +139,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
             assert not np.isnan(np.sum(trial))
 
+            rejected = False # flag for trial rejection
+
             # process 1 channel at a time
             for channel in xrange(trial.shape[0]):
                 # filter channels
@@ -161,9 +165,13 @@ class EEGEpochsDataset(DenseDesignMatrix):
                 # log.info('using samples {}..{} of {}'.format(start_sample,stop_sample, samples.shape))
 
                 if stop_sample is not None and stop_sample > len(samples):
-                    tmp = np.zeros(stop_sample)
-                    tmp[:len(samples)] = samples
-                    samples = tmp
+                    if zero_padding:
+                        tmp = np.zeros(stop_sample)
+                        tmp[:len(samples)] = samples
+                        samples = tmp
+                    else:
+                        rejected = True
+                        break # stop processing this trial
 
                 samples = samples[start_sample:stop_sample]
 
@@ -181,6 +189,9 @@ class EEGEpochsDataset(DenseDesignMatrix):
                 processed_trial.append(s)
 
                 ### end of channel iteration ###
+
+            if rejected:
+                continue    # next trial
 
             processed_trial = np.asfarray([processed_trial], dtype='float32')
 
