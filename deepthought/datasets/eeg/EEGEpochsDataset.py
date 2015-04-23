@@ -141,6 +141,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
             rejected = False # flag for trial rejection
 
+            trial = np.atleast_2d(trial)
+
             # process 1 channel at a time
             for channel in xrange(trial.shape[0]):
                 # filter channels
