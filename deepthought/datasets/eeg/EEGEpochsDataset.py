@@ -83,6 +83,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
                  # optional signal filter to by applied before spitting the signal
                  signal_filter = None,
 
+                 trial_processors = [],     # optional processing of the trials
                  target_processor = None,   # optional processing of the targets, e.g. zero-padding
                  transformers = [],         # optional transformations of the dataset
 
@@ -105,8 +106,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
             pass # FIXME
 
         selected_trial_ids = metadb.select(selectors)
-        print selected_trial_ids
-
+        log.info('selected trials: {}'.format(selected_trial_ids))
 
         trials = list()
         labels = list()
@@ -198,19 +198,23 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
             processed_trial = np.asfarray([processed_trial], dtype=theano.config.floatX)
 
-            # TODO optional trial processing
-            # TODO optional windowing
-
             # processed_trial = processed_trial.reshape((1, processed_trial.shape))
             processed_trial = np.rollaxis(processed_trial, 1, 4)
 
-            trials.append(processed_trial)
-            meta.append(db.metadata[trial_i])
+            # optional (external) trial processing, e.g. windowing
+            # trials will be in b01c format mit tf layout for 01-axes
+            for trial_processor in trial_processors:
+                processed_trial = trial_processor.process(processed_trial)
 
-            if target is None:
-                labels.append(label)
-            else:
-                targets.append(target)
+            trials.append(processed_trial)
+
+            for k in range(len(processed_trial)):
+                meta.append(db.metadata[trial_i])
+
+                if target is None:
+                    labels.append(label)
+                else:
+                    targets.append(target)
 
         ### end of datafile iteration ###
 
@@ -219,6 +223,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         assert not np.isnan(np.sum(self.trials))
 
+        # prepare targets / labels
         if use_targets and db.targets is not None:
             self.targets = np.vstack(targets)
             assert not np.isnan(np.sum(self.targets))
@@ -233,6 +238,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
         if layout == 'ft': # swap axes to (batch, feature, time, channels)
             self.trials = self.trials.swapaxes(1, 2)
 
+        # transform after finalizing the data structure
         for transformer in transformers:
             self.trials, self.targets = transformer.process(self.trials, self.targets)
 
