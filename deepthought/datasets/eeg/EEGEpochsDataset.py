@@ -16,6 +16,7 @@ from deepthought.util.fs_util import load
 from deepthought.datasets.eeg.channel_filter import NoChannelFilter
 
 from deepthought.datasets.selection import DatasetMetaDB
+import theano
 
 class DataFile(object):
     def __init__(self, filepath):
@@ -186,7 +187,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
                 s = s.reshape(s.shape[0], 1)
                 # print s.shape
 
-                s = np.asfarray(s, dtype='float32')
+                s = np.asfarray(s, dtype=theano.config.floatX)
 
                 processed_trial.append(s)
 
@@ -195,7 +196,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
             if rejected:
                 continue    # next trial
 
-            processed_trial = np.asfarray([processed_trial], dtype='float32')
+            processed_trial = np.asfarray([processed_trial], dtype=theano.config.floatX)
 
             # TODO optional trial processing
             # TODO optional windowing
@@ -234,6 +235,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         for transformer in transformers:
             self.trials, self.targets = transformer.process(self.trials, self.targets)
+
+        self.trials = np.asarray(self.trials, dtype=theano.config.floatX)
 
         log.debug('final dataset shape: {} (b,0,1,c)'.format(self.trials.shape))
         super(EEGEpochsDataset, self).__init__(topo_view=self.trials, y=self.targets, axes=['b', 0, 1, 'c'])
