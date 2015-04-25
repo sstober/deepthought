@@ -115,17 +115,20 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
         for trial_i in selected_trial_ids:
 
-            if use_targets and db.targets is not None:
-                target = db.targets[trial_i]
+            trial_meta = db.metadata[trial_i]
 
-                assert not np.isnan(np.sum(target))
+            if use_targets:
+                if targets is None:
+                    target = None
+                else:
+                    target = db.targets[trial_i]
+                    assert not np.isnan(np.sum(target))
 
                 if target_processor is not None:
-                    target = target_processor.process(target)
+                    target = target_processor.process(target, trial_meta)
 
-                assert not np.isnan(np.sum(target))
+                    assert not np.isnan(np.sum(target))
             else:
-                target = None
                 # get and process label
                 label = db.metadata[trial_i][label_attribute]
                 if label_map is not None:
@@ -204,17 +207,17 @@ class EEGEpochsDataset(DenseDesignMatrix):
             # optional (external) trial processing, e.g. windowing
             # trials will be in b01c format mit tf layout for 01-axes
             for trial_processor in trial_processors:
-                processed_trial = trial_processor.process(processed_trial)
+                processed_trial = trial_processor.process(processed_trial, trial_meta)
 
             trials.append(processed_trial)
 
             for k in range(len(processed_trial)):
-                meta.append(db.metadata[trial_i])
+                meta.append(trial_meta)
 
-                if target is None:
-                    labels.append(label)
-                else:
+                if use_targets:
                     targets.append(target)
+                else:
+                    labels.append(label)
 
         ### end of datafile iteration ###
 
@@ -224,7 +227,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
         assert not np.isnan(np.sum(self.trials))
 
         # prepare targets / labels
-        if use_targets and db.targets is not None:
+        if use_targets:
             self.targets = np.vstack(targets)
             assert not np.isnan(np.sum(self.targets))
         else:
