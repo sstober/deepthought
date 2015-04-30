@@ -18,6 +18,26 @@ from deepthought.datasets.eeg.channel_filter import NoChannelFilter
 from deepthought.datasets.selection import DatasetMetaDB
 import theano
 
+class DataSet(object):
+    def __init__(self, data, metadata, targets=None):
+        self.data = data
+        self.metadata = metadata
+        self.targets = targets
+
+class Subset(object):
+    def __init__(self, db, selectors):
+        metadb = DatasetMetaDB(db.metadata, selectors.keys())
+        selected_trial_ids = metadb.select(selectors)
+
+        self.data = [db.data[i] for i in selected_trial_ids]
+        self.metadata = [db.metadata[i] for i in selected_trial_ids]
+
+        if hasattr(db, 'targets'):
+            if db.targets is None:
+                self.targets = None
+            else:
+                self.targets = [db.targets[i] for i in selected_trial_ids]
+
 class DataFile(object):
     def __init__(self, filepath):
         self.filepath = filepath
