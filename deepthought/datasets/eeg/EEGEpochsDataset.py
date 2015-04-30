@@ -252,7 +252,8 @@ class EEGEpochsDataset(DenseDesignMatrix):
             assert not np.isnan(np.sum(self.targets))
         else:
             labels = np.hstack(labels)
-            one_hot_formatter = OneHotFormatter(labels.max() + 1) # FIXME!
+            # one_hot_formatter = OneHotFormatter(labels.max() + 1) # FIXME!
+            one_hot_formatter = OneHotFormatter(max(label_map.values()) + 1)
             one_hot_y = one_hot_formatter.format(labels)
             self.targets = one_hot_y
 
