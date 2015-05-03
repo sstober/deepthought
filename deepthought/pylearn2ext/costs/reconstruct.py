@@ -22,6 +22,11 @@ class MeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
 
             WRITEME
         """
+        # for debugging: check that batch shape is identical
+        # import theano
+        # a = theano.printing.Print('a: ', attrs=('shape',))(a)
+        # b = theano.printing.Print('b: ', attrs=('shape',))(b)
+
         l = a.shape[1] * a.shape[2] * a.shape[3]
         a = T.reshape(a, (a.shape[0], l))
         b = T.reshape(b, (b.shape[0], l))
@@ -33,10 +38,15 @@ class MeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
 
             WRITEME
         """
-        self.get_data_specs(model)[0].validate(data)
+        input_space = self.get_data_specs(model)[0]
+        input_space.validate(data)
         X = data
 
-        X_out = T.swapaxes(T.swapaxes(model.fprop(X), 1, 2), 2,3)  # convert bc01 to b01c
+        output_space = model.get_output_space()
+        X_out = model.fprop(X)
+        output_space.validate(X_out)
+        X_out = output_space.format_as(X_out, input_space)
+
         return self.cost(X, X_out)
 
 class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
@@ -95,10 +105,8 @@ class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
 
         return self.cost(act1, act2)
 
-from theano.printing import Print
-import pylearn2.costs.dbm
 
-class TargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
+class RNNTargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
     """
     for each input instance,
     """
@@ -130,3 +138,73 @@ class TargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
         X_out = model.fprop(X)
         # return self.cost(Y, X_out)
         return self.cost(Y, X_out[-1]) # FIXME: this is a temporary hack for HAMR
+
+
+class TargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
+    """
+    for each input instance,
+    """
+    def __init__(self):
+        self.supervised = True # for DefaultDataSpecsMixin
+
+    @staticmethod
+    def cost(a, b):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        return ((a - b) ** 2).sum(axis=1).mean()
+
+    def expr(self, model, data, *args, **kwargs):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        self.get_data_specs(model)[0].validate(data)
+        # print self.get_data_specs(model)
+        X, Y = data
+        assert Y is not None
+
+        X_out = model.fprop(X)
+        output_space = model.get_output_space()
+        output_space.validate(X_out)
+        X_out = output_space.format_as(X_out, model.get_target_space())
+
+        return self.cost(Y, X_out)
+
+
+class TargetMeanAbsReconstructionError(DefaultDataSpecsMixin, Cost):
+    """
+    for each input instance,
+    """
+    def __init__(self):
+        self.supervised = True # for DefaultDataSpecsMixin
+
+    @staticmethod
+    def cost(a, b):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        return ((a - b) ** 2).sum(axis=1).mean()
+
+    def expr(self, model, data, *args, **kwargs):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        self.get_data_specs(model)[0].validate(data)
+        # print self.get_data_specs(model)
+        X, Y = data
+        assert Y is not None
+
+        X_out = model.fprop(X)
+        output_space = model.get_output_space()
+        output_space.validate(X_out)
+        X_out = output_space.format_as(X_out, model.get_target_space())
+
+        return self.cost(Y, X_out)
