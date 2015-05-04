@@ -93,6 +93,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                  remove_dc_offset = False,  # optional subtraction of channel mean, usually done already earlier
                  resample = None,       # optional down-sampling
+                 normalize = False,     # normalize to max=1
 
                  # optional sub-sequences selection
                  start_sample = 0,
@@ -199,12 +200,13 @@ class EEGEpochsDataset(DenseDesignMatrix):
                         rejected = True
                         break # stop processing this trial
 
-                samples = samples[start_sample:stop_sample]
+                s = samples[start_sample:stop_sample]
 
                 # TODO optional channel processing
 
                 # normalize to max amplitude 1
-                s = librosa.util.normalize(samples)
+                if normalize:
+                    s = librosa.util.normalize(s)
 
                 # add 2nd data dimension
                 s = s.reshape(s.shape[0], 1)
