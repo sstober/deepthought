@@ -93,7 +93,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
                  remove_dc_offset = False,  # optional subtraction of channel mean, usually done already earlier
                  resample = None,       # optional down-sampling
-                 normalize = False,     # normalize to max=1
+                 normalize = True,      # normalize to max=1
 
                  # optional sub-sequences selection
                  start_sample = 0,
