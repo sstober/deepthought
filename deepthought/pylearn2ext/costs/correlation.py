@@ -48,6 +48,9 @@ class MeanCrossCorrelation(DefaultDataSpecsMixin, Cost):
         # a = theano.printing.Print('a: ', attrs=('shape',))(a)
         # b = theano.printing.Print('b: ', attrs=('shape',))(b)
 
+        # nb = a.shape[0]
+        # nc = a.shape[1]
+
         l0 = a.shape[0] * a.shape[1]
         l1 = a.shape[2] * a.shape[3]
         a = T.reshape(a, (l0, l1))
@@ -55,10 +58,16 @@ class MeanCrossCorrelation(DefaultDataSpecsMixin, Cost):
 
         r = pairwise_pearsonr(a,b)
 
+        # r = r.reshape((nb, nc))
+        #
         # import theano
+        # r = theano.printing.Print('r: ', attrs=('shape',))(r)
+        #
+        # r = r.mean(axis=1)
         # r = theano.printing.Print('r: ', attrs=('shape',))(r)
 
         return 1. - r.mean()
+
 
     def expr(self, model, data, *args, **kwargs):
         """
@@ -78,21 +87,27 @@ class MeanCrossCorrelation(DefaultDataSpecsMixin, Cost):
             target_space.validate(Y)
             Y = target_space.format_as(Y, desired_space)
 
+            Y_out = model.fprop(X)
+            output_space = model.get_output_space()
+            output_space.validate(Y_out)
+            Y_out = output_space.format_as(Y_out, desired_space)
+
+            return self.cost(Y, Y_out)
+
         else:
             input_space = self.get_data_specs(model)[0]
             desired_space = self._get_desired_space(input_space)
 
             X = data
             input_space.validate(X)
+            X = input_space.format_as(X, desired_space)
 
             Y = model.fprop(X)
             output_space = model.get_output_space()
             output_space.validate(Y)
             Y = output_space.format_as(Y, desired_space)
 
-        X = input_space.format_as(X, desired_space)
-
-        return self.cost(X, Y)
+            return self.cost(X, Y)
 
 
 def pairwise_pearsonr(X,Y):

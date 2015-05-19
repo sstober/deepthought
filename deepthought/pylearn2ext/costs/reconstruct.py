@@ -14,9 +14,10 @@ class MeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
     """
     for each input instance,
     """
+    def __init__(self, per_sample=False):
+        self.per_sample = per_sample
 
-    @staticmethod
-    def cost(a, b):
+    def cost(self, a, b):
         """
         .. todo::
 
@@ -30,7 +31,10 @@ class MeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
         l = a.shape[1] * a.shape[2] * a.shape[3]
         a = T.reshape(a, (a.shape[0], l))
         b = T.reshape(b, (b.shape[0], l))
-        return ((a - b) ** 2).sum(axis=1).mean()
+        if self.per_sample:
+            return ((a - b) ** 2).mean()
+        else:
+            return ((a - b) ** 2).sum(axis=1).mean()
 
     def expr(self, model, data, *args, **kwargs):
         """
@@ -49,7 +53,7 @@ class MeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
 
         return self.cost(X, X_out)
 
-class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
+class LayerMeanSquaredReconstructionError(MeanSquaredReconstructionError):
     """
     for each input instance,
     """
@@ -58,7 +62,10 @@ class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
                  layer1_name,
                  layer2_name,
                  layer1_axes='b01c',
-                 layer2_axes='b01c'):
+                 layer2_axes='b01c',
+                 per_sample=False):
+
+        super(LayerMeanSquaredReconstructionError, self).__init__(per_sample)
 
         # determine layer ids
         def get_layer_id(model, layer_name):
@@ -73,18 +80,6 @@ class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
         self.layer1_axes = layer1_axes
         self.layer2_axes = layer2_axes
 
-
-    @staticmethod
-    def cost(a, b):
-        """
-        .. todo::
-
-            WRITEME
-        """
-        l = a.shape[1] * a.shape[2] * a.shape[3]
-        a = T.reshape(a, (a.shape[0], l))
-        b = T.reshape(b, (b.shape[0], l))
-        return ((a - b) ** 2).sum(axis=1).mean()
 
     def expr(self, model, data, *args, **kwargs):
         """
@@ -106,6 +101,7 @@ class LayerMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
         return self.cost(act1, act2)
 
 
+# deprecated
 class RNNTargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
     """
     for each input instance,
@@ -140,21 +136,13 @@ class RNNTargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
         return self.cost(Y, X_out[-1]) # FIXME: this is a temporary hack for HAMR
 
 
-class TargetMeanSquaredReconstructionError(DefaultDataSpecsMixin, Cost):
+class TargetMeanSquaredReconstructionError(MeanSquaredReconstructionError):
     """
     for each input instance,
     """
-    def __init__(self):
+    def __init__(self, per_sample=False):
+        super(TargetMeanSquaredReconstructionError, self).__init__(per_sample)
         self.supervised = True # for DefaultDataSpecsMixin
-
-    @staticmethod
-    def cost(a, b):
-        """
-        .. todo::
-
-            WRITEME
-        """
-        return ((a - b) ** 2).sum(axis=1).mean()
 
     def expr(self, model, data, *args, **kwargs):
         """
@@ -189,7 +177,7 @@ class TargetMeanAbsReconstructionError(DefaultDataSpecsMixin, Cost):
 
             WRITEME
         """
-        return ((a - b) ** 2).sum(axis=1).mean()
+        return abs(a - b).sum(axis=1).mean()
 
     def expr(self, model, data, *args, **kwargs):
         """
