@@ -100,9 +100,10 @@ class MeanCrossCorrelation(DefaultDataSpecsMixin, Cost):
 
             X = data
             input_space.validate(X)
-            X = input_space.format_as(X, desired_space)
-
             Y = model.fprop(X)
+
+            X = input_space.format_as(X, desired_space) # needs to be done after fprop!
+
             output_space = model.get_output_space()
             output_space.validate(Y)
             Y = output_space.format_as(Y, desired_space)
