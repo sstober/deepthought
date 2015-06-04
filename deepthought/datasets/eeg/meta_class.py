@@ -22,7 +22,7 @@ class DataFileWithMetaClass(DataFile):
             value = class_map[key]
 
             meta[class_name] = value
-            print key, value, meta
+            # print key, value, meta
 
 
 # target_processor implementation
