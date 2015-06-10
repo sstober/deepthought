@@ -1,6 +1,6 @@
 __author__ = 'sstober'
 
-from deepthought.datasets.mpi2015.metadata import load_stimuli_metadata, get_stimuli_version
+from deepthought.datasets.openmiir.metadata import load_stimuli_metadata, get_stimuli_version
 
 class BPMTargetProcessor(object):
 

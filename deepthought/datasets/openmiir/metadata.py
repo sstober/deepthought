@@ -9,7 +9,7 @@ import xlrd
 import deepthought
 from deepthought.util.fs_util import ensure_parent_dir_exists
 
-from deepthought.datasets.mpi2015.constants import STIMULUS_IDS
+from deepthought.datasets.openmiir.constants import STIMULUS_IDS
 
 DEFAULT_VERSION = 1
 
