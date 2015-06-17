@@ -4,28 +4,32 @@ import logging
 log = logging.getLogger(__name__)
 
 import os
+import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 import mne
 from mne.io import read_raw_edf
 from mne.channels import rename_channels
+from mne.preprocessing import ICA, read_ica
+from mne.viz.topomap import plot_topomap
 
-from deepthought.datasets.eeg.biosemi64 import Biosemi64Layout
-from deepthought.datasets.openmiir.preprocessing.events import extract_events_from_raw
+import deepthought
 from deepthought.util.fs_util import ensure_parent_dir_exists
+from deepthought.util.logging_util import configure_custom
+from deepthought.datasets.eeg.biosemi64 import Biosemi64Layout
 from deepthought.datasets.openmiir.eeg import recording_has_mastoid_channels
+from deepthought.datasets.openmiir.events import decode_event_id
+from deepthought.datasets.openmiir.preprocessing.events import \
+    merge_trial_and_audio_onsets, generate_beat_events, \
+    simple_beat_event_id_generator, extract_events_from_raw
+from deepthought.datasets.openmiir.metadata import get_stimuli_version, load_stimuli_metadata
+from deepthought.mneext.viz import plot_ica_overlay_evoked
+from deepthought.mneext.resample import fast_resample_mne
 
 RAW_EOG_CHANNELS = [u'EXG1', u'EXG2', u'EXG3', u'EXG4']
 MASTOID_CHANNELS = [u'EXG5', u'EXG6']
-
-def preprocess(data_root, subject, verbose=True):
-    biosemi_data_root = os.path.join(data_root, 'eeg', 'biosemi')
-    mne_data_root = os.path.join(data_root, 'eeg', 'mne')
-
-    import_and_process_metadata(biosemi_data_root, mne_data_root, subject, verbose)
-    # TODO: add metadata about experiment to raw.info
-
-    # add_bar_events(mne_data_root, subject, verbose)
-
-    # clean_data(mne_data_root, subject, verbose)
 
 def load_raw_info(subject,
              mne_data_root=None,
@@ -34,7 +38,7 @@ def load_raw_info(subject,
     if mne_data_root is None:
         # use default data root
         import deepthought
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
         mne_data_root = os.path.join(data_root, 'eeg', 'mne')
 
     mne_data_filepath = os.path.join(mne_data_root, '{}-raw.fif'.format(subject))
@@ -53,7 +57,7 @@ def load_raw(subject,
     if mne_data_root is None:
         # use default data root
         import deepthought
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
         mne_data_root = os.path.join(data_root, 'eeg', 'mne')
 
     mne_data_filepath = os.path.join(mne_data_root, '{}-raw.fif'.format(subject))
@@ -110,7 +114,7 @@ def load_ica(subject, description, mne_data_root=None):
     if mne_data_root is None:
         # use default data root
         import deepthought
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
         mne_data_root = os.path.join(data_root, 'eeg', 'mne')
 
     ica_filepath = os.path.join(mne_data_root,
@@ -250,44 +254,6 @@ def clean_data(mne_data_root, subject, verbose=True, overwrite=False):
     ensure_parent_dir_exists(output_filepath)
     raw.save(output_filepath, overwrite=overwrite, verbose=False)
 
-if __name__ == '__main__':
-    log = logging.getLogger('deepthought')
-
-    import deepthought
-    # deepthought.init_logging()
-
-    # from deepthought.util.config_util import init_logging
-    # init_logging()
-
-    from deepthought.util.logging_util import configure_custom
-    configure_custom(debug=True)
-    mne.set_log_level('INFO')
-
-    subject = 'Pilot3'
-    DATA_ROOT = os.path.join(deepthought.DATA_PATH, 'mpi2015')
-
-    # extract_events(DATA_ROOT, subject)
-    # extract_events(DATA_ROOT, subject, verbose=False)
-
-    preprocess(DATA_ROOT, subject)
-
-
-
-
-from deepthought.datasets.openmiir.events import decode_event_id
-from deepthought.datasets.openmiir.preprocessing.events import merge_trial_and_audio_onsets
-from deepthought.datasets.openmiir.metadata import get_stimuli_version, load_stimuli_metadata
-from deepthought.mneext.viz import plot_ica_overlay_evoked
-from deepthought.mneext.resample import fast_resample_mne
-import matplotlib.pyplot as plt
-import numpy as np
-import deepthought, mne, os
-from deepthought.datasets.openmiir.preprocessing.events import generate_beat_events, simple_beat_event_id_generator
-from mne.preprocessing import ICA
-from mne.viz.topomap import plot_topomap
-import matplotlib.gridspec as gridspec
-from mne.preprocessing import read_ica
-from deepthought.util.logging_util import configure_custom
 
 class Pipeline(object):
     """
@@ -325,7 +291,7 @@ class Pipeline(object):
         if 'data_root' in settings:
             self.data_root = settings['data_root']
         else:
-            self.data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+            self.data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
 
         # load stimuli metadata version
         self.stimuli_version = get_stimuli_version(subject)
@@ -351,7 +317,8 @@ class Pipeline(object):
         mne_data_root = os.path.join(self.data_root, 'eeg', 'mne')
         self.raw = load_raw(self.subject, mne_data_root=mne_data_root,
                             interpolate_bad_channels=interpolate_bad_channels,
-                            reference_mastoids=True)
+                            reference_mastoids=reference_mastoids,
+                            verbose=verbose)
         self.eeg_picks = mne.pick_types(self.raw.info, meg=False, eeg=True, eog=False, stim=False)
 
         self.filtered = False
@@ -456,9 +423,8 @@ class Pipeline(object):
         mne.viz.plot_events(merged_events, raw.info['sfreq'], raw.first_samp, axes=axes)
 
 
-    def merge_trial_and_audio_onsets(self):
+    def merge_trial_and_audio_onsets(self, use_audio_onsets=True):
         raw = self.raw
-        use_audio_onsets = True  # FIXME
 
         # save original events
         self.orig_trial_events = self.trial_events
@@ -1016,12 +982,12 @@ class Pipeline(object):
 
 
     def save_ica(self, description):
-        mne_data_root = os.path.join(self.data_root, 'eeg', 'mne')
+        mne_data_root = os.path.join(self.data_root, 'eeg', 'preprocessing', 'ica')
         ica_filepath = os.path.join(mne_data_root,
                                     '{}-{}-ica.fif'.format(self.subject, description))
         self.ica.save(ica_filepath)
 
     def load_ica(self, description):
-        mne_data_root = os.path.join(self.data_root, 'eeg', 'mne')
+        mne_data_root = os.path.join(self.data_root, 'eeg', 'preprocessing', 'ica')
         self.ica = load_ica(self.subject, description, mne_data_root)
 

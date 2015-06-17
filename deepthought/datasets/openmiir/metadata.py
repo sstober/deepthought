@@ -25,7 +25,7 @@ def get_audio_filepath(stim_id, data_root=None, version=None):
         version = DEFAULT_VERSION
 
     if data_root is None:
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
 
     meta = load_stimuli_metadata(data_root=data_root, version=version)
 
@@ -38,7 +38,7 @@ def load_stimuli_metadata(data_root=None, version=None):
         version = DEFAULT_VERSION
 
     if data_root is None:
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
 
     xlsx_filepath = os.path.join(data_root, 'meta', 'Stimuli_Meta.v{}.xlsx'.format(version))
     book = xlrd.open_workbook(xlsx_filepath, encoding_override="cp1252")
@@ -78,7 +78,7 @@ def save_beat_times(beats, stimulus_id, cue=False, data_root=None, offset=None, 
         version = DEFAULT_VERSION
 
     if data_root is None:
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
 
     if cue:
         assert offset is None   # no offset in cue files
@@ -108,7 +108,7 @@ def load_beat_times(stimulus_id, cue=False, data_root=None, verbose=None, versio
         version = DEFAULT_VERSION
 
     if data_root is None:
-        data_root = os.path.join(deepthought.DATA_PATH, 'mpi2015')
+        data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
 
     if cue:
         beats_filepath = os.path.join(data_root, 'meta',
