@@ -115,7 +115,7 @@ def load_ica(subject, description, ica_data_root=None):
         # use default data root
         import deepthought
         data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
-        mne_data_root = os.path.join(data_root, 'eeg', 'preprocessing', 'ica')
+        ica_data_root = os.path.join(data_root, 'eeg', 'preprocessing', 'ica')
 
     ica_filepath = os.path.join(ica_data_root,
                                 '{}-{}-ica.fif'.format(subject, description))
