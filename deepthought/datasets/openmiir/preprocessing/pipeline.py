@@ -110,14 +110,14 @@ def interpolate_bad_channels(inst):
         log.info('No channels marked as bad. Nothing to interpolate.')
 
 
-def load_ica(subject, description, mne_data_root=None):
-    if mne_data_root is None:
+def load_ica(subject, description, ica_data_root=None):
+    if ica_data_root is None:
         # use default data root
         import deepthought
         data_root = os.path.join(deepthought.DATA_PATH, 'OpenMIIR')
-        mne_data_root = os.path.join(data_root, 'eeg', 'mne')
+        mne_data_root = os.path.join(data_root, 'eeg', 'preprocessing', 'ica')
 
-    ica_filepath = os.path.join(mne_data_root,
+    ica_filepath = os.path.join(ica_data_root,
                                 '{}-{}-ica.fif'.format(subject, description))
     return read_ica(ica_filepath)
 
@@ -980,14 +980,16 @@ class Pipeline(object):
             evoked_cln = ica.apply(evoked, exclude=ica.exclude, copy=True)
             plot_ica_overlay_evoked(evoked=evoked, evoked_cln=evoked_cln, title='', show=True)
 
+    def get_ica_data_root(self):
+        return os.path.join(self.data_root, 'eeg', 'preprocessing', 'ica')
 
     def save_ica(self, description):
-        mne_data_root = os.path.join(self.data_root, 'eeg', 'preprocessing', 'ica')
-        ica_filepath = os.path.join(mne_data_root,
+        ica_data_root = self.get_ica_data_root()
+        ica_filepath = os.path.join(ica_data_root,
                                     '{}-{}-ica.fif'.format(self.subject, description))
         self.ica.save(ica_filepath)
 
     def load_ica(self, description):
-        mne_data_root = os.path.join(self.data_root, 'eeg', 'preprocessing', 'ica')
-        self.ica = load_ica(self.subject, description, mne_data_root)
+        ica_data_root = self.get_ica_data_root()
+        self.ica = load_ica(self.subject, description, ica_data_root)
 
