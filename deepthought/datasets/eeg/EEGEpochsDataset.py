@@ -6,50 +6,18 @@ log = logging.getLogger(__name__)
 import numpy as np
 
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
-from pylearn2.utils.timing import log_timing
-
 from pylearn2.format.target_format import OneHotFormatter
 
 import librosa
 
-from deepthought.util.fs_util import load
 from deepthought.datasets.eeg.channel_filter import NoChannelFilter
-
 from deepthought.datasets.selection import DatasetMetaDB
 import theano
 
-class DataSet(object):
-    def __init__(self, data, metadata, targets=None):
-        self.data = data
-        self.metadata = metadata
-        self.targets = targets
-
-class Subset(object):
-    def __init__(self, db, selectors):
-        metadb = DatasetMetaDB(db.metadata, selectors.keys())
-        selected_trial_ids = metadb.select(selectors)
-
-        self.data = [db.data[i] for i in selected_trial_ids]
-        self.metadata = [db.metadata[i] for i in selected_trial_ids]
-
-        if hasattr(db, 'targets'):
-            if db.targets is None:
-                self.targets = None
-            else:
-                self.targets = [db.targets[i] for i in selected_trial_ids]
-
-class DataFile(object):
-    def __init__(self, filepath):
-        self.filepath = filepath
-        with log_timing(log, 'loading data from {}'.format(filepath)):
-            tmp = load(filepath)
-            if len(tmp) == 2:
-                self.data, self.metadata = tmp
-                self.targets = None
-            elif len(tmp) == 3:
-                self.data, self.metadata, self.targets = tmp
-            else:
-                raise ValueError('got {} objects instead of 2 or 3.'.format(len(tmp)))
+# legacy support
+from deepthought.datasets.datasources import Datasource as DataSet
+from deepthought.datasets.datasources import SubDatasource as Subset
+from deepthought.datasets.datasources import SingleFileDatasource as DataFile
 
 class EEGEpochsDataset(DenseDesignMatrix):
     """
@@ -77,7 +45,7 @@ class EEGEpochsDataset(DenseDesignMatrix):
 
 
     def __init__(self,
-                 db,
+                 db,                # data source
                  name = '',         # optional name
 
                  selectors = dict(),
