@@ -6,12 +6,21 @@ from deepthought.datasets.openmiir.preprocessing.events import generate_beat_eve
 from deepthought.datasets.openmiir.metadata import get_stimuli_version
 from deepthought.mneext.resample import fast_resample_mne, resample_mne_events
 
-def load_and_preprocess_raw(subject, sfreq=None, verbose=None):
+def load_and_preprocess_raw(subject,
+                            sfreq=None,
+                            onsets='audio',
+                            interpolate_bad_channels=True,
+                            reference_mastoids=True,
+                            verbose=None,
+                            ):
 
     # load the imported fif data, use the audio onsets
-    raw = load_raw(subject, onsets='audio', verbose=verbose,
-                   interpolate_bad_channels=True,
-                   reference_mastoids=True)
+    raw = load_raw(subject,
+                   onsets=onsets,
+                   interpolate_bad_channels=interpolate_bad_channels,
+                   reference_mastoids=reference_mastoids,
+                   verbose=verbose,
+                   )
 
     # apply bandpass filter, use 4 processes to speed things up
     eeg_picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=False, stim=False)
