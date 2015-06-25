@@ -52,7 +52,8 @@ def load_datafiles_metadata(path):
 
 class MultiChannelEEGDataset(DenseDesignMatrix):
     """
-    TODO classdocs
+    this class is deprecated
+    use EEGEpochsDataset for more flexibility
     """
     class Like(object):
         """
