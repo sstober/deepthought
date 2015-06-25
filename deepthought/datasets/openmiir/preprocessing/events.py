@@ -551,3 +551,16 @@ def add_trial_cue_offsets(trial_events, meta, raw_info, debug=False):
 
     log.info('processed {} trials.'.format(n_processed))
     return trial_events
+
+
+def remove_overlapping_events(events, tmin, tmax, sfreq):
+    filtered = []
+    sample_len = (tmax-tmin) * sfreq
+    last_end = sample_len
+    for event in events:
+        if event[0] > last_end:
+            filtered.append(event)
+            last_end = event[0] + tmin + sample_len
+    filtered = np.asarray(filtered)
+    print 'kept {} of {} events'.format(len(filtered), len(events))
+    return filtered

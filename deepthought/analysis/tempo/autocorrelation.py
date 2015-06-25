@@ -20,19 +20,6 @@ def compute_autocorrelation(data):
     return np.asarray(y, dtype=np.float32)
 
 
-def remove_overlapping_events(events, tmin, tmax, sfreq):
-    filtered = []
-    sample_len = (tmax-tmin) * sfreq
-    last_end = sample_len
-    for event in events:
-        if event[0] > last_end:
-            filtered.append(event)
-            last_end = event[0] + tmin + sample_len
-    filtered = np.asarray(filtered)
-    print 'kept {} of {} events'.format(len(filtered), len(events))
-    return filtered
-
-
 def autocorr_index_to_bpm(index, sfreq):
     return 60.0*sfreq / index
 
