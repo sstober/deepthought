@@ -94,4 +94,4 @@ def sliding_window_tempo_analysis(trial, sfreq,
     else:
         best = [best_upper, best_lower]
 
-    return best, ac_bpm_mat, best_pairs, best_scores
+    return bpm_values[best], ac_bpm_mat, bpm_values[best_pairs], best_scores
