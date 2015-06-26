@@ -61,3 +61,29 @@ def load_and_preprocess_raw(subject,
     raw = ica.apply(raw, exclude=ica.exclude, copy=False)
 
     return raw, trial_events, beat_events
+
+
+def preload(subjects,
+            sfreq=None,
+            onsets='audio',
+            interpolate_bad_channels=True,
+            reference_mastoids=True,
+            verbose=None):
+
+    raw_cache = dict()
+    events_cache = dict()
+
+    for subject in subjects:
+
+        raw, trial_events, beat_events = load_and_preprocess_raw(
+            subject,
+            sfreq=sfreq,
+            onsets=onsets,
+            interpolate_bad_channels=interpolate_bad_channels,
+            reference_mastoids=reference_mastoids,
+            verbose=verbose)
+
+        raw_cache[subject] = raw
+        events_cache[subject] = trial_events
+
+    return raw_cache, events_cache

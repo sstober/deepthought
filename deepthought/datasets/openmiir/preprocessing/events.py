@@ -487,7 +487,7 @@ def decode_beat_event_type(etype):
     return stimulus_id, condition, cue, beat_count
 
 
-def filter_beat_events(events, stimulus_ids='any', conditions='any', beat_counts='any'):
+def filter_beat_events(events, stimulus_ids='any', conditions='any', beat_counts='any', cue_value='any'):
 #     print 'selected stimulus ids:', stimulus_ids
 #     print 'selected conditions  :', conditions
 #     print 'selected beat counts :', beat_counts
@@ -499,7 +499,8 @@ def filter_beat_events(events, stimulus_ids='any', conditions='any', beat_counts
 
         if (stimulus_ids == 'any' or stimulus_id in stimulus_ids) and \
                 (conditions == 'any' or condition in conditions) and \
-                (beat_counts == 'any' or beat_count in beat_counts):
+                (beat_counts == 'any' or beat_count in beat_counts) and \
+                (cue_value == 'any' or cue == cue_value):
             filtered.append(event)
 
     return np.asarray(filtered)

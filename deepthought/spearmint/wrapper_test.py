@@ -13,8 +13,9 @@ if __name__ == '__main__':
     
     job_id = 'job1';
 #     meta_job_path = os.path.dirname(__file__);
-    meta_job_path = '/Users/sstober/git/deepbeat/deepbeat/spearmint/h0_input_1bar_nophase/';
+    meta_job_path = '/Users/sstober/git/deepbeat/deepbeat/spearmint/audiomostly/h0_input_1bar_nophase/';
     yaml_template_file = os.path.join(meta_job_path,'_template.yaml');
+    # yaml_template_file = '/Users/sstober/work/develop/code-repos/deepthought-dev.git/deepthought/experiments/rwanda2013scae/_template.yaml'
     base_config_path = os.path.join(meta_job_path,'_base_config.properties');
     result = spearmint_wrapper.run_job(
                                        job_id, 
