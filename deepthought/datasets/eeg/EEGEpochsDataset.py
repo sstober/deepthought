@@ -5,8 +5,15 @@ log = logging.getLogger(__name__)
 
 import numpy as np
 
-from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
+import functools
+
+# from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
+from pylearn2.datasets import Dataset
 from pylearn2.format.target_format import OneHotFormatter
+from pylearn2.space import CompositeSpace, VectorSpace, Conv2DSpace, IndexSpace
+from pylearn2.utils import safe_zip
+from pylearn2.utils.iteration import FiniteDatasetIterator
+from pylearn2.utils.iteration import resolve_iterator_class
 
 import librosa
 
@@ -19,7 +26,7 @@ from deepthought.datasets.datasources import Datasource as DataSet
 from deepthought.datasets.datasources import SubDatasource as Subset
 from deepthought.datasets.datasources import SingleFileDatasource as DataFile
 
-class EEGEpochsDataset(DenseDesignMatrix):
+class EEGEpochsDataset(Dataset):
     """
     TODO classdocs
     """
@@ -241,7 +248,137 @@ class EEGEpochsDataset(DenseDesignMatrix):
         self.trials = np.asarray(self.trials, dtype=theano.config.floatX)
 
         log.debug('final dataset shape: {} (b,0,1,c)'.format(self.trials.shape))
-        super(EEGEpochsDataset, self).__init__(topo_view=self.trials, y=self.targets, axes=['b', 0, 1, 'c'])
+        # super(EEGEpochsDataset, self).__init__(topo_view=self.trials, y=self.targets, axes=['b', 0, 1, 'c'])
 
+        self.X = self.trials.reshape(self.trials.shape[0], np.prod(self.trials.shape[1:]))
+        self.y = self.targets
         log.info('generated dataset "{}" with shape X={}={} y={} targets={} '.
                  format(self.name, self.X.shape, self.trials.shape, self.y.shape, self.targets.shape))
+
+
+        # determine data specs
+        features_space = Conv2DSpace(
+            shape=[self.trials.shape[1], self.trials.shape[2]],
+            num_channels=self.trials.shape[3]
+        )
+        features_source = 'features'
+
+        targets_space = VectorSpace(dim=self.targets.shape[-1])
+        targets_source = 'targets'
+
+        space_components = [features_space, targets_space]
+        source_components = [features_source, targets_source]
+
+        # additional support for subject information
+        self.subjects = sorted(list(set([meta['subject'] for meta in self.metadata])))
+        space_components.extend([VectorSpace(dim=1)])
+        source_components.extend(['subjects'])
+
+        space = CompositeSpace(space_components)
+        source = tuple(source_components)
+        self.data_specs = (space, source)
+
+
+    def get_data_specs(self):
+        return self.data_specs
+
+    def get_num_examples(self):
+        return len(self.trials)
+
+
+    def _validate_source(self, source):
+        """
+        Verify that all sources in the source tuple are provided by the
+        dataset. Raise an error if some requested source is not available.
+        Parameters
+        ----------
+        source : `tuple` of `str`
+            Requested sources
+        """
+        for s in source:
+            try:
+                self.data_specs[1].index(s)
+            except ValueError:
+                raise ValueError("the requested source named '" + s + "' " +
+                                 "is not provided by the dataset")
+
+
+    def get(self, source, indexes):
+        """
+        .. todo::
+            WRITEME
+        """
+        print 'get', indexes
+
+        if type(indexes) is slice:
+            indexes = np.arange(indexes.start, indexes.stop)
+        self._validate_source(source)
+
+        rval = []
+        for so in source:
+
+            if so == 'features':
+                batch = self.trials[indexes]
+            elif so == 'targets':
+                batch = self.targets[indexes]
+            elif so == 'subjects':
+                batch = [self.subjects.index(self.metadata[i]['subject']) for i in indexes]
+                batch = np.atleast_2d(np.asarray(batch, dtype=int)).T
+                # print batch
+            else:
+                pass # TODO: support more sources
+
+            rval.append(batch)
+        return tuple(rval)
+
+
+    '''
+    adapted from https://github.com/vdumoulin/research/blob/master/code/pylearn2/datasets/timit.py
+    '''
+    @functools.wraps(Dataset.iterator)
+    def iterator(self, mode=None, batch_size=None, num_batches=None,
+                 rng=None, data_specs=None, return_tuple=False):
+        """
+        .. todo::
+            WRITEME
+        """
+        if data_specs is None:
+            data_specs = self._iter_data_specs
+
+        # If there is a view_converter, we have to use it to convert
+        # the stored data for "features" into one that the iterator
+        # can return.
+        space, source = data_specs
+        if isinstance(space, CompositeSpace):
+            sub_spaces = space.components
+            sub_sources = source
+        else:
+            sub_spaces = (space,)
+            sub_sources = (source,)
+
+        convert = []
+        for sp, src in safe_zip(sub_spaces, sub_sources):
+            convert.append(None)
+
+        # TODO: Refactor
+        if mode is None:
+            if hasattr(self, '_iter_subset_class'):
+                mode = self._iter_subset_class
+            else:
+                raise ValueError('iteration mode not provided and no default '
+                                 'mode set for %s' % str(self))
+        else:
+            mode = resolve_iterator_class(mode)
+
+        if batch_size is None:
+            batch_size = getattr(self, '_iter_batch_size', None)
+        if num_batches is None:
+            num_batches = getattr(self, '_iter_num_batches', None)
+        if rng is None and mode.stochastic:
+            rng = self.rng
+        return FiniteDatasetIterator(self,
+                                     mode(len(self.trials), batch_size,
+                                          num_batches, rng),
+                                     data_specs=data_specs,
+                                     return_tuple=return_tuple,
+                                     convert=convert)
