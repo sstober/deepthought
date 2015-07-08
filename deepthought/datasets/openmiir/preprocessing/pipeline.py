@@ -479,7 +479,7 @@ class Pipeline(object):
             fmax = raw.info['sfreq']
         plt.figure(figsize=(17,5))
         axes = plt.gca()
-        raw.plot_psds(area_mode='range', tmax=10.0, ax=axes, picks=self.eeg_picks, fmax=fmax)
+        raw.plot_psd(area_mode='range', tmax=10.0, ax=axes, picks=self.eeg_picks, fmax=fmax)
 
 
     def check_channel(self, ch_num):

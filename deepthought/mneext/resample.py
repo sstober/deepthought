@@ -120,11 +120,8 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
 
     # adjust affected variables
     self._data = np.concatenate(new_data, axis=1)
-    self.first_samp = self._first_samps[0]
-    self.last_samp = self.first_samp + self._data.shape[1] - 1
     self.info['sfreq'] = sfreq
-    self._times = (np.arange(self.n_times, dtype=np.float64)
-                   / self.info['sfreq'])
+    self._update_times()
 
     ### begin new code: restore save events in each stim channel ###
     if preserve_events:
