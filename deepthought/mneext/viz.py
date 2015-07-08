@@ -2,6 +2,10 @@ __author__ = 'sstober'
 
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import cycle
+from mne.io.pick import channel_type
+from mne.externals.six import string_types
+from mne.defaults import _handle_default
 from mne.viz.utils import tight_layout
 
 def plot_ica_overlay_evoked(evoked, evoked_cln, title, show):
@@ -53,11 +57,6 @@ def plot_ica_overlay_evoked(evoked, evoked_cln, title, show):
     fig.canvas.draw()
 
 
-from itertools import cycle
-from mne.io.pick import channel_type, pick_types, _picks_by_type
-from mne.externals.six import string_types
-from mne.viz.utils import _mutable_defaults, tight_layout
-
 def _plot_evoked(evoked, plot_type, colorbar=True, hline=None, ylim=None,
                 picks=None, exclude='bads', unit=True, show=True,
                       clim=None, proj=False, xlim='tight', units=None,
@@ -78,9 +77,9 @@ def _plot_evoked(evoked, plot_type, colorbar=True, hline=None, ylim=None,
         raise RuntimeError('Currently only single axis figures are supported'
                            ' for interactive SSP selection.')
 
-    scalings, titles, units = _mutable_defaults(('scalings', scalings),
-                                                ('titles', titles),
-                                                ('units', units))
+    scalings = _handle_default('scalings', scalings)
+    titles = _handle_default('titles', titles)
+    units = _handle_default('units', units)
 
     channel_types = set(key for d in [scalings, titles, units] for key in d)
     channel_types = sorted(channel_types)  # to guarantee consistent order
