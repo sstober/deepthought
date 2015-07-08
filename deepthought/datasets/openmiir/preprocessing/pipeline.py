@@ -95,7 +95,7 @@ def load_raw(subject,
         log.info('This file contains some EEG channels marked as bad: {}'.format(bads))
         if interpolate_bad_channels:
             log.info('Interpolating bad channels...')
-            raw.interpolate_bads_eeg()
+            raw.interpolate_bads()
         else:
             log.info('To interpolate bad channels run load_raw() with interpolate_bad_channels=True.')
 
@@ -105,7 +105,7 @@ def interpolate_bad_channels(inst):
     bads = inst.info['bads']
     if bads is not None and len(bads) > 0:
         log.info('Interpolating bad channels...')
-        inst.interpolate_bads_eeg()
+        inst.interpolate_bads()
     else:
         log.info('No channels marked as bad. Nothing to interpolate.')
 
@@ -379,7 +379,7 @@ class Pipeline(object):
             log.warn('The following channels are interpolated: {}. '
                      'This overwrites the channel data. '
                      'To undo this, the raw data needs to be reloaded.'.format(self.raw.info['bads']))
-            self.raw.interpolate_bads_eeg()
+            self.raw.interpolate_bads()
         else:
             print 'No bad channels that need to be interpolated.'
 
