@@ -32,7 +32,7 @@ def get_audio_filepath(stim_id, data_root=None, version=None):
     return os.path.join(data_root, 'audio', 'full.v{}'.format(version),
                         meta[stim_id]['audio_file'])
 
-def load_stimuli_metadata(data_root=None, version=None):
+def load_stimuli_metadata(data_root=None, version=None, verbose=None):
 
     if version is None:
         version = DEFAULT_VERSION
@@ -44,7 +44,8 @@ def load_stimuli_metadata(data_root=None, version=None):
     book = xlrd.open_workbook(xlsx_filepath, encoding_override="cp1252")
     sheet = book.sheet_by_index(0)
 
-    log.info('Loading stimulus metadata from {}'.format(xlsx_filepath))
+    if verbose:
+        log.info('Loading stimulus metadata from {}'.format(xlsx_filepath))
 
     meta = dict()
     for i in range(1, 13):

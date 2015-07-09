@@ -72,8 +72,9 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
         for sp in stim_picks:
             stim_channel_name = raw.ch_names[sp]
             if verbose:
-                log.info('saving events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
-            stim_events[sp] = mne.find_events(raw, stim_channel=stim_channel_name, shortest_event=0)
+                log.info('Saving events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
+            stim_events[sp] = mne.find_events(raw, stim_channel=stim_channel_name,
+                                              shortest_event=0, verbose=verbose)
     ### end new code: save events in each stim channel ###
 
     ratio = sfreq / o_sfreq
@@ -83,18 +84,18 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
         ### begin changed code ###
 #         new_data.append(resample(data_chunk, sfreq, o_sfreq, npad,
 #                                  n_jobs=n_jobs))
-        if verbose:
-            log.info('resampling {} channels...'.format(len(data_chunk)))
+#         if verbose:
+        log.info('Resampling {} channels...'.format(len(data_chunk)))
         new_data_chunk = list()
         for i, channel in enumerate(data_chunk):
             if verbose:
-                log.info('processing channel #{}'.format(i))
+                log.info('Processing channel #{}'.format(i))
             # TODO: this could easily be parallelized
             new_data_chunk.append(librosa.resample(channel, o_sfreq, sfreq, res_type=res_type))
 
         new_data_chunk = np.vstack(new_data_chunk)
         if verbose:
-            print 'data shape after resampling: {}'.format(new_data_chunk.shape)
+            log.debug('data shape after resampling: {}'.format(new_data_chunk.shape))
         new_data.append(new_data_chunk)
         ### end changed code ###
 
@@ -130,7 +131,7 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
 
             if verbose:
                 stim_channel_name = raw.ch_names[sp]
-                log.info('restoring events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
+                log.info('Restoring events for stim channel "{}" (#{})'.format(stim_channel_name, sp))
 
             # scale onset times
             for event in stim_events[sp]:

@@ -373,7 +373,8 @@ def generate_beat_events(trial_events,                  # base events as stored 
         for stimulus_id in STIMULUS_IDS:
             num_cue_beats[stimulus_id] = \
                 meta[stimulus_id]['beats_per_bar'] * meta[stimulus_id]['cue_bars']
-        print num_cue_beats
+        if verbose:
+            print num_cue_beats
 
 
     ## helper function to add a single beat event

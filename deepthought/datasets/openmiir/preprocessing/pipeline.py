@@ -92,12 +92,13 @@ def load_raw(subject,
 
     bads = raw.info['bads']
     if bads is not None and len(bads) > 0:
-        log.info('This file contains some EEG channels marked as bad: {}'.format(bads))
         if interpolate_bad_channels:
-            log.info('Interpolating bad channels...')
+            log.info('Interpolating bad channels: {}'.format(bads))
             raw.interpolate_bads()
         else:
-            log.info('To interpolate bad channels run load_raw() with interpolate_bad_channels=True.')
+            log.info('This file contains some EEG channels marked as bad: {}\n'
+                     'To interpolate bad channels run load_raw() with interpolate_bad_channels=True.'
+                     ''.format(bads))
 
     return raw
 
