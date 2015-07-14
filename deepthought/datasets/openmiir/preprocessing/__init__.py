@@ -16,7 +16,10 @@ def load_and_preprocess_raw(subject,
                             h_freq=30,
                             sfreq=None,
                             ica_cleaning=True,
+                            l_freq2=None,
+                            h_freq2=None,
                             verbose=None,
+                            n_jobs=4
                             ):
 
     # load the imported fif data, use the specified onsets
@@ -32,7 +35,7 @@ def load_and_preprocess_raw(subject,
     eeg_picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=False, stim=False)
     raw.filter(l_freq=l_freq, h_freq=h_freq, picks=eeg_picks, filter_length='10s',
                l_trans_bandwidth=0.1, h_trans_bandwidth=0.5, method='fft',
-               n_jobs=4, verbose=verbose)
+               n_jobs=n_jobs, verbose=verbose)
 
     # extract events
     # this comprises 240 trials, 60 noise events (1111) and 60 feedback events (2000=No, 2001=Yes)
@@ -55,6 +58,12 @@ def load_and_preprocess_raw(subject,
             log.info('Applying ICA: {}'.format(ica))
         log.info('Excluding ICA components: {}'.format(ica.exclude))
         raw = ica.apply(raw, exclude=ica.exclude, copy=False)
+
+    if l_freq2 is not None or h_freq2 is not None:
+        log.info('Applying additional filter: low_cut_freq={} high_cut_freq={}'.format(l_freq2, h_freq2))
+        raw.filter(l_freq=l_freq2, h_freq=h_freq2, picks=eeg_picks, filter_length='10s',
+               l_trans_bandwidth=0.1, h_trans_bandwidth=0.5, method='fft',
+               n_jobs=n_jobs, verbose=verbose)
 
     return raw, trial_events
 
