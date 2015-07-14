@@ -85,7 +85,8 @@ def fast_resample_mne(raw, sfreq, stim_picks=None, preserve_events=True, res_typ
 #         new_data.append(resample(data_chunk, sfreq, o_sfreq, npad,
 #                                  n_jobs=n_jobs))
 #         if verbose:
-        log.info('Resampling {} channels...'.format(len(data_chunk)))
+        log.info('Resampling {} channels from {} Hz to {} Hz ...'
+                 .format(len(data_chunk), o_sfreq, sfreq))
         new_data_chunk = list()
         for i, channel in enumerate(data_chunk):
             if verbose:
