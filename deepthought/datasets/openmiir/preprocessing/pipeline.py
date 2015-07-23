@@ -1051,6 +1051,7 @@ class Pipeline(object):
         ica_data_root = self.get_ica_data_root()
         ica_filepath = os.path.join(ica_data_root,
                                     '{}-{}-ica.fif'.format(self.subject, description))
+        ensure_parent_dir_exists(ica_filepath)
         self.ica.save(ica_filepath)
 
     def load_ica(self, description):
