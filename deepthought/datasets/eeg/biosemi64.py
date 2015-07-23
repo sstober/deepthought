@@ -212,7 +212,7 @@ class Biosemi64Layout(ChannelLayout):
         return self.__PROJECTED_XY_COORDS
 
     def as_montage(self):
-        from mne.channels.layout import Montage
+        from mne.channels.montage import Montage
         pos = self.xyz_coords()
         # print pos[1,:]
         pos = pos[:,[1,0,2]]  # swap x and y

@@ -47,11 +47,17 @@ def load_raw_info(subject,
     raw = mne.io.Raw(mne_data_filepath, preload=False, verbose=verbose)
     return raw.info
 
-def load_raw(subject,
+
+def load_raw(subject, **args):
+    return _load_raw(subject=subject, has_mastoid_channels=recording_has_mastoid_channels, **args)
+
+
+def _load_raw(subject,
              mne_data_root=None,
              verbose=False,
              onsets=None,
              interpolate_bad_channels=False,
+             has_mastoid_channels=None, # None=True, False, or callable(subject) returning True/False
              reference_mastoids=True):
 
     if mne_data_root is None:
@@ -66,7 +72,10 @@ def load_raw(subject,
     raw = mne.io.Raw(mne_data_filepath, preload=True, verbose=verbose)
 
     ## referencing to mastoids
-    if recording_has_mastoid_channels(subject):
+    if has_mastoid_channels is None \
+        or has_mastoid_channels is True \
+        or has_mastoid_channels(subject) is True:
+
         if reference_mastoids:
             log.info('Referencing to mastoid channels: {}'.format(MASTOID_CHANNELS))
             mne.io.set_eeg_reference(raw, MASTOID_CHANNELS, copy=False) # inplace
@@ -224,7 +233,8 @@ def fix_channel_infos(mne_data_filepath, verbose=True):
         mapping[bdf_channel_names[i]] = channel_name
     rename_channels(raw.info, mapping)
 
-    mne.channels.apply_montage(raw.info, montage)
+    # mne.channels.apply_montage(raw.info, montage) # in mne 0.9
+    raw.set_montage(montage) # in mne 0.9
     log.info('Saving raw fif data to: {}'.format(mne_data_filepath))
     raw.save(mne_data_filepath, overwrite=True, verbose=False)
 
@@ -320,7 +330,7 @@ class Pipeline(object):
                             interpolate_bad_channels=interpolate_bad_channels,
                             reference_mastoids=reference_mastoids,
                             verbose=verbose)
-        self.eeg_picks = mne.pick_types(self.raw.info, meg=False, eeg=True, eog=False, stim=False)
+        self.eeg_picks = mne.pick_types(self.raw.info, meg=False, eeg=True, eog=False, stim=False, exclude=[])
 
         self.filtered = False
         self.downsampled = False
@@ -385,8 +395,40 @@ class Pipeline(object):
             print 'No bad channels that need to be interpolated.'
 
 
+    def plot_bad_channel_topo(self):
+        bads = [self.raw.ch_names.index(ch) for ch in self.raw.info['bads']]
+        # print bads
+
+        # topo = np.zeros((64), dtype=float)
+        topo = self.raw[0:64,0][0].squeeze()
+        # print topo.shape
+
+        mask = np.zeros(64, dtype=bool)
+        mask[bads] = True
+        mask_params = dict(marker='', markeredgecolor='r', linewidth=0, markersize=4)
+
+        layout = Biosemi64Layout()
+        pos = layout.projected_xy_coords()
+
+        # print pos.shape
+        plt.figure(figsize=(5,5))
+        mne.viz.plot_topomap(topo, pos,
+                             res=2,
+                             sensors='k.',
+                             names=layout.channel_names(),
+                             show_names=True,
+                             cmap='RdBu_r',
+                             vmin=-1, vmax=1,
+#                              vmin=vmin, vmax=vmax,
+                             axis=plt.gca(),
+                             contours=False,
+                             mask=mask,
+                             mask_params=mask_params
+                         )
+
+
     ## check the trial events
-    def check_trial_events(self):
+    def check_trial_events(self, verbose=False):
 
         # assert self.filtered is False
         assert self.downsampled is False
@@ -394,7 +436,9 @@ class Pipeline(object):
         raw = self.raw
 
         trial_events = mne.find_events(raw, stim_channel='STI 014', shortest_event=0)
-        print trial_events
+
+        if verbose:
+            print trial_events
 
         plt.figure(figsize=(17,10))
         axes = plt.gca()
@@ -530,7 +574,7 @@ class Pipeline(object):
                                            verbose=verbose)
 
         # FIXME: read from settings
-        picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=True)
+        picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=True, exclude=[])
         event_id = None # any
         tmin = -0.2  # start of each epoch (200ms before the trigger)
         tmax = 0.8  # end of each epoch (600ms after the trigger) - longest beat is 0.57s long
@@ -561,7 +605,7 @@ class Pipeline(object):
         mne.viz.plot_events(eog_events, raw.info['sfreq'], raw.first_samp, axes=axes)
 
         # create epochs around EOG events
-        picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=True) # FIXME
+        picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=True, exclude=[]) # FIXME
         tmin = -.5
         tmax = .5
         eog_epochs = mne.Epochs(raw, events=eog_events, event_id=eog_event_id,
@@ -599,12 +643,16 @@ class Pipeline(object):
         # resample epochs
         print 'down-sampling epochs ...'
         self.eog_epochs.resample(sfreq)
-        self.beat_epochs.resample(sfreq)
+        self._downsample_epochs()
 
         print 'TODO: down-sampling events (not in stim channel) ...'
         # TODO: resample events
 
         self.downsampled = True
+
+    def _downsample_epochs(self):
+        sfreq = self.downsample_sfreq
+        self.beat_epochs.resample(sfreq)
 
 
     def check_resampled_trial_events(self, plot=True, verbose=None):
@@ -638,11 +686,16 @@ class Pipeline(object):
 
     ############################ ICA aux functions ############################
 
-    def compute_ica(self, method='extended-infomax', verbose=None):
+    # override to change ICA behavior
+    def _get_ica_data(self):
+        # return self.raw       # fit to raw data
+        return self.beat_epochs # fit to epochs
 
-        # data = raw       # fit to raw data
-        data = self.beat_epochs # fit to epochs  # FIXME
-        random_state = np.random.RandomState(42) # FIXME
+
+    def compute_ica(self, method='extended-infomax', random_seed=42, verbose=None):
+
+        data = self._get_ica_data()
+        random_state = np.random.RandomState(random_seed)
 
         ###############################################################################
         # 1) Fit ICA model using the FastICA algorithm
@@ -679,8 +732,9 @@ class Pipeline(object):
         plt.show()
 
     def inspect_source_psd(self, ic):
-        source = self.ica._transform_epochs(self.beat_epochs, concatenate=True)[ic]
-        sfreq = self.beat_epochs.info['sfreq']
+        data = self._get_ica_data()
+        source = self.ica._transform_epochs(data, concatenate=True)[ic]
+        sfreq = data.info['sfreq']
         plt.figure()
         plt.psd(source, Fs=sfreq, NFFT=128, noverlap=0, pad_to=None)
         plt.show()
@@ -724,7 +778,7 @@ class Pipeline(object):
     def auto_detect_artifact_components(self):
 
         ica = self.ica
-        data = self.beat_epochs # FIXME
+        data = self._get_ica_data()
 
         """
         data: raw, epochs or evoked
@@ -798,11 +852,13 @@ class Pipeline(object):
         self.ica.exclude = selection
 
 
-    def plot_sources(self, mode='beats', components=None, highlight='excluded', plot_size=3):
+    def plot_sources(self, mode='data', components=None, highlight='excluded', plot_size=3):
         ica = self.ica
         picks = components
 
-        if mode == 'beats':
+        if mode == 'data':
+            data = self._get_ica_data()
+        elif mode == 'beats':
             data = self.beat_epochs
         elif mode == 'eog':
             data = self.eog_epochs
@@ -884,11 +940,13 @@ class Pipeline(object):
         plt.show()
 
 
-    def inspect_source_epochs(self, component, mode='beats', start=0, layout=[5,1], figsize=(17,2.2), vmax=None):
+    def inspect_source_epochs(self, component, mode='data', start=0, layout=[5,1], figsize=(17,2.2), vmax=None):
 
         ica = self.ica
 
-        if mode == 'beats':
+        if mode == 'data':
+            data = self._get_ica_data()
+        elif mode == 'beats':
             data = self.beat_epochs
         elif mode == 'eog':
             data = self.eog_epochs
@@ -936,7 +994,7 @@ class Pipeline(object):
 
     def inspect_source(self, component, range=None):
         ica = self.ica
-        data = self.beat_epochs # FIXME
+        data = self._get_ica_data()
 
         if range == None:
             range = [None, None]
@@ -957,7 +1015,12 @@ class Pipeline(object):
         ica = self.ica
         eog_evoked = self.eog_epochs.average()
         raw = self.raw
-        evoked = self.beat_epochs.average()
+        data = self._get_ica_data()
+
+        if isinstance(data, mne.epochs._BaseEpochs):
+            evoked = data.average()
+        else:
+            evoked = None
 
         if eog_evoked is not None:
             print 'Assess impact on average EOG artifact:'
