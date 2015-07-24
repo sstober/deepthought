@@ -84,6 +84,8 @@ class EEGEpochsDataset(Dataset):
                  transformers = [],         # optional transformations of the dataset
 
                  layout='tf',       # (0,1)-axes layout tf=time x features or ft=features x time
+
+                 debug=False,
                  ):
         '''
         Constructor
@@ -95,6 +97,7 @@ class EEGEpochsDataset(Dataset):
         # print self.params
 
         self.name = name
+        self.debug = debug
 
         metadb = DatasetMetaDB(db.metadata, selectors.keys())
 
@@ -308,7 +311,8 @@ class EEGEpochsDataset(Dataset):
         .. todo::
             WRITEME
         """
-        print 'get', indexes
+        if self.debug:
+            print 'get', indexes
 
         if type(indexes) is slice:
             indexes = np.arange(indexes.start, indexes.stop)
