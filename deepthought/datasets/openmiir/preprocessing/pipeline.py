@@ -930,7 +930,7 @@ class Pipeline(object):
         # this will take care of rejected channels
         data_picks, pos, merge_grads, names, _ = mne.viz.topomap._prepare_topo_plot(ica, 'eeg', layout)
 
-        mne.viz.topomap.plot_topomap(topodata.flatten(), pos, axis=ax)
+        mne.viz.topomap.plot_topomap(topodata.flatten(), pos, axis=ax, show=False)
         ax.text(0.01, .99, '[{}]'.format(component), transform=ax.transAxes,
                     verticalalignment='top')
 
