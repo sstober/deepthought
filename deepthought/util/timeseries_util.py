@@ -15,6 +15,7 @@ def compute_number_of_frames(input_length, frame_length, hop_length):
 
 
 def frame(y, frame_length, hop_length):
+    y = np.ascontiguousarray(y) # important requirement - otherwise strides are messed up
 
     y_len = y.shape[0]
 #     print y_len
@@ -23,8 +24,6 @@ def frame(y, frame_length, hop_length):
     n_frames = 1 + int( (y_len - frame_length) / hop_length)
 
     if len(y.shape) == 1:
-#         shape = (frame_length, n_frames)
-#         strides=(y.itemsize, hop_length * y.itemsize)
         shape = (n_frames, frame_length)
         strides=(hop_length * y.itemsize, y.itemsize)
     elif len(y.shape) == 2:
