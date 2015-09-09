@@ -205,7 +205,7 @@ class EEGEpochsDataset(Dataset):
             processed_trial = np.rollaxis(processed_trial, 1, 4)
 
             # optional (external) trial processing, e.g. windowing
-            # trials will be in b01c format mit tf layout for 01-axes
+            # trials will be in b01c format with tf layout for 01-axes
             for trial_processor in trial_processors:
                 processed_trial = trial_processor.process(processed_trial, trial_meta)
 

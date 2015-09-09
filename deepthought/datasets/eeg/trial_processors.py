@@ -52,3 +52,47 @@ class WindowingProcessor(object):
         # print frame_trials.shape
 
         return frame_trials
+
+
+class CWTMorletProcessor(object):
+    def __init__(self, sfreq, freqs=None, use_fft=True, n_cycles=7, zero_mean=True):
+        self.sfreq = sfreq
+        if freqs is None:
+            freqs = np.arange(1, sfreq//2 +1, 1)
+        self.freqs = freqs
+        self.use_fft = use_fft
+        self.n_cycles = n_cycles
+        self.zero_mean = zero_mean
+
+    def process(self, trials, metadata=None):
+        # expecting trials in b01c format with tf layout for 01-axes
+        assert trials.shape[2] == 1
+
+        from mne.time_frequency import cwt_morlet
+
+        tfr_trials = []
+        for trial in trials:
+#             print trial.shape
+            trial = trial.squeeze()         # get rid of 1-axis
+            trial = trial.T                 # put channels first
+            trial = np.atleast_2d(trial)    # handle single-channel case
+
+            tfr = cwt_morlet(trial,
+                             sfreq=self.sfreq,
+                             freqs=self.freqs,
+                             use_fft=self.use_fft,
+                             n_cycles=self.n_cycles,
+                             zero_mean=self.zero_mean)
+
+            tfr = abs(tfr) ** 2
+
+            # tfr format: channels x freqs x samples
+            # desired output format: samples x freqs x channels
+            tfr = np.swapaxes(tfr, 0, 2)
+
+#             print tfr.shape
+            tfr_trials.append(tfr)
+
+        tfr_trials = np.asarray(tfr_trials)
+#         print tfr_trials.shape
+        return tfr_trials
