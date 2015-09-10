@@ -207,8 +207,6 @@ class TrialNormalizer(object):
 
         import librosa
 
-        # transform to spectogram
-
         for trial in trials:
 #             print 'norm', trial.shape
             n_channels = trial.shape[-1]
@@ -253,5 +251,29 @@ class TrialNormalizer(object):
                     s = np.minimum(s, self.high_clip)
 
                 trial[:,:,c] = s
+
+        return trials
+
+
+class FrequencyAmplitudeNormalizer(object):
+    '''
+    Scales amplitudes by frequency to compensate ~1/f factor.
+    This could, e.g., be useful in combination with convolution over frequency bins.
+    '''
+
+    def __init__(self, freqs):
+
+        self.freqs = freqs
+
+
+    def process(self, trials, metadata=None):
+        # modification is done inplace
+
+        for trial in trials:
+            # samples x freqs x channels
+            assert trial.shape[1] == len(self.freqs)
+
+            for i, freq in enumerate(self.freqs):
+                trial[:,i,:] *= freq
 
         return trials
