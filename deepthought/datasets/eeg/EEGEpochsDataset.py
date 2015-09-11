@@ -281,12 +281,21 @@ class EEGEpochsDataset(Dataset):
         source = tuple(source_components)
         self.data_specs = (space, source)
 
+    def has_targets(self):
+        return True
 
     def get_data_specs(self):
         return self.data_specs
 
     def get_num_examples(self):
         return len(self.trials)
+
+    def get_topological_view(self):
+        """
+        legacy support of old dataset based on DenseDesignMatrix
+        :return: b01c view of the dataset
+        """
+        return self.trials
 
 
     def _validate_source(self, source):
