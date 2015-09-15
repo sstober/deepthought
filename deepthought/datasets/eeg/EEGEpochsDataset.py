@@ -105,6 +105,7 @@ class EEGEpochsDataset(Dataset):
             pass # FIXME
 
         selected_trial_ids = metadb.select(selectors)
+        log.info('selectors: {}'.format(selectors))
         log.info('selected trials: {}'.format(selected_trial_ids))
 
         if normalize:
