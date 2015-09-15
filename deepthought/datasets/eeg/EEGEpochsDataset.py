@@ -107,6 +107,9 @@ class EEGEpochsDataset(Dataset):
         selected_trial_ids = metadb.select(selectors)
         log.info('selected trials: {}'.format(selected_trial_ids))
 
+        if normalize:
+            log.info('Data will be normalized to max amplitude 1 per channel (normalize=True).')
+
         trials = list()
         labels = list()
         targets = list()
