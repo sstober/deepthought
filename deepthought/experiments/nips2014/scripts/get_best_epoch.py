@@ -6,9 +6,11 @@ Created on Jun 4, 2014
 '''
 import itertools;
 import logging;
-from deepthought.util.config_util import init_logging;
+
 from pylearn2.utils import serial;
-from deepthought.analysis.extract_results import _extract_best_results, _get_best_epochs;
+
+from deepthought.util.config_util import init_logging;
+from deepthought.experiments.ismir2014.extract_results import _extract_best_results, _get_best_epochs;
 
 if __name__ == '__main__':
     

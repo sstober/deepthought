@@ -3,9 +3,9 @@ Created on Apr 10, 2014
 
 @author: sstober
 '''
-import os;
-
 import logging;
+
+import os;
 log = logging.getLogger(__name__);
 
 import numpy as np; 
@@ -15,7 +15,7 @@ from pylearn2.utils.timing import log_timing
 from deepthought.experiments.ismir2014.util import load_config;
 from deepthought.util.yaml_util import load_yaml_file, save_yaml_file;
 from deepthought.experiments.ismir2014.plot import scan_for_best_performance;
-from deepthought.analysis.extract_results import extract_results;
+from deepthought.experiments.ismir2014.extract_results import extract_results;
 
 def train_convnet(config):
     

@@ -6,12 +6,12 @@ Created on Apr 17, 2014
 @deprecated: replaced by scripts in run/ that use more YAML
 '''
 
-import os;
 import time;
+import logging;
 
+import os;
 import numpy as np;
 
-import logging;
 log = logging.getLogger(__name__);
 
 from deepthought.experiments.ismir2014.util import load_config;
@@ -37,7 +37,7 @@ from deepthought.pylearn2ext import StackedDenoisingAutoencoder
 
 from deepthought.experiments.ismir2014.plot import scan_for_best_performance;
 
-from deepthought.analysis.extract_results import extract_results;
+from deepthought.experiments.ismir2014.extract_results import extract_results;
 
 import numpy
 

@@ -4,14 +4,15 @@ Created on May 6, 2014
 @author: sstober
 '''
 
+import traceback;
+
 import os;
 import numpy as np;
-import traceback;
 
 from deepthought.experiments.ismir2014.util import load_config, save;
 from deepthought.util.config_util import merge_params;
 from deepthought.experiments.ismir2014.train_convnet import train_convnet, get_default_config_path
-from deepthought.analysis.extract_results import extract_results, extract_output;
+from deepthought.experiments.ismir2014.extract_results import extract_results, extract_output;
 
 
 def run_experiment(config, hyper_params, random_seeds):

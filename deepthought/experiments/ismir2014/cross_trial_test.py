@@ -4,9 +4,9 @@ Created on Apr 25, 2014
 @author: sstober
 '''
 
-import os;
-
 import logging;
+
+import os;
 log = logging.getLogger(__name__);
 
 import numpy as np;
@@ -17,7 +17,7 @@ from deepthought.util.config_util import merge_params;
 
 from pylearn2.utils.timing import log_timing
 
-from deepthought.analysis.extract_results import compare_best_result, extract_best_result, extract_results;
+from deepthought.experiments.ismir2014.extract_results import extract_best_result, extract_results;
 
 def train_mlp(params):
     train, yaml_str = load_yaml_file(

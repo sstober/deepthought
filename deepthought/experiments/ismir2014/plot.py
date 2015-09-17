@@ -5,18 +5,17 @@ Created on Apr 22, 2014
 '''
 
 import logging;
-from pylearn2.costs.cost import CrossEntropy
+
 log = logging.getLogger(__name__);
 
 import os;
 import numpy as np
 from deepthought.experiments.ismir2014.util import load_config;
-from deepthought.util.config_util import merge_params;
 
 import matplotlib.pyplot as plt
 from pylearn2.utils import serial
 
-from deepthought.analysis.extract_results import extract_results, compare_best_result;
+from deepthought.experiments.ismir2014.extract_results import compare_best_result;
 
 # from pylearn2.scripts.plot_monitor import plot_monitor;
 

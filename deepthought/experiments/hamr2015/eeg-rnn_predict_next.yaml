@@ -23,6 +23,23 @@
         },
         channel_names: &channel_names !obj:deepthought.datasets.eeg.biosemi64.ChannelNameLoader {
         },
+
+        resample : [512, &sample_rate 100],
+
+        signal_filter: !obj:deepthought.experiments.mpi2015.signal_filter.MNEFilterWrapper {
+            type: 'band-pass',
+            params: {
+                    Fs: *sample_rate,
+                    Fp1: 2,
+                    Fp2: 30,
+                    l_trans_bandwidth: 0.5, 
+                    h_trans_bandwidth: 0.5,
+                    method: 'fft',
+                    filter_length: '10s',                    
+                    # n_jobs: 'cuda', # try to use scikits.cuda - otherwise use 1
+                    copy: False,    # inplace change
+                },
+        },
         
         remove_dc_offset : True,
         frame_size : 5,

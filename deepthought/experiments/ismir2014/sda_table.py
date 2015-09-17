@@ -4,15 +4,17 @@ Created on May 6, 2014
 @author: sstober
 '''
 
+import traceback;
+
 import os;
 import numpy as np;
-import traceback;
 
 from deepthought.experiments.ismir2014.util import load_config;
 from deepthought.util.config_util import merge_params;
 from deepthought.experiments.ismir2014.train_sda_mlp import train_sda, train_mlp, get_default_config_path;
-from deepthought.analysis.extract_results import extract_results;
+from deepthought.experiments.ismir2014.extract_results import extract_results;
 from deepthought.experiments.ismir2014.analyze_sda import analyze_msre;
+
 
 def fix_local_sda_config(hyper_params):
     hyper_params['layer0_content'] = os.path.join(hyper_params['experiment_root'], 'sda', 'sda_layer0_tied.pkl');

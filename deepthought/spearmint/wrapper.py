@@ -3,21 +3,20 @@ Created on May 11, 2014
 
 @author: sstober
 '''
-import os;
 import traceback
 import random
-
 import logging;
+
+import os;
+
 log = logging.getLogger(__name__);
 
 import itertools
 
-import numpy as np;
-
 from pylearn2.utils import serial;
 from pylearn2.utils.timing import log_timing
 
-from deepthought.analysis.extract_results import _extract_best_results, _get_best_epochs;
+from deepthought.experiments.ismir2014.extract_results import _extract_best_results, _get_best_epochs;
 
 from deepthought.util.config_util import load_config_file, init_logging, merge_params;
 from deepthought.util.fs_util import ensure_dir_exists, symlink, touch;
