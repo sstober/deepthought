@@ -50,6 +50,14 @@ class EEGEpochsDataset(Dataset):
 
             return EEGEpochsDataset(**params)
 
+    class AutoLength(object):
+        """
+        Helper class to automatically determine trial length in dataset.
+        """
+        def __new__(AutoLength,
+                    dataset,
+        ):
+            return dataset.trials.shape[2]
 
     def __init__(self,
                  db,                # data source
@@ -115,6 +123,13 @@ class EEGEpochsDataset(Dataset):
         labels = list()
         targets = list()
         meta = list()
+
+        if stop_sample == 'auto-min':
+            stop_sample = np.min([db.data[trial_i].shape[-1] for trial_i in selected_trial_ids])
+            log.info('Using minimum trial length. stop_sample={}'.format(stop_sample))
+        elif stop_sample ==  'auto-max':
+            stop_sample = np.max([db.data[trial_i].shape[-1] for trial_i in selected_trial_ids])
+            log.info('Using maximum trial length. stop_sample={}'.format(stop_sample))
 
         for trial_i in selected_trial_ids:
 
