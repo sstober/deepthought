@@ -67,6 +67,8 @@ class EEGEpochsDataset(Dataset):
 
                  partitioner = None,
 
+                 meta_sources = [],     # optional sources other than 'features' and 'targets' from metadata
+
                  channel_filter = NoChannelFilter(),   # optional channel filter, default: keep all
                  channel_names = None,  # optional channel names (for metadata)
 
@@ -291,14 +293,19 @@ class EEGEpochsDataset(Dataset):
         space_components = [features_space, targets_space]
         source_components = [features_source, targets_source]
 
-        # additional support for subject information
-        self.subjects = sorted(list(set([meta['subject'] for meta in self.metadata])))
-        space_components.extend([VectorSpace(dim=1)])
-        source_components.extend(['subjects'])
+        # additional support for meta information
+        self.meta_maps = dict()
+        for meta_source in meta_sources:
+            self.meta_maps[meta_source] = sorted(list(set([m[meta_source] for m in self.metadata])))
+            space_components.extend([VectorSpace(dim=1)])
+            source_components.extend([meta_source])
+            log.info('Generated meta-source "{}" with value map: {}'
+                     .format(meta_source, self.meta_maps[meta_source]))
 
         space = CompositeSpace(space_components)
         source = tuple(source_components)
         self.data_specs = (space, source)
+        print self.data_specs
 
     def has_targets(self):
         return True
@@ -353,12 +360,10 @@ class EEGEpochsDataset(Dataset):
                 batch = self.trials[indexes]
             elif so == 'targets':
                 batch = self.targets[indexes]
-            elif so == 'subjects':
-                batch = [self.subjects.index(self.metadata[i]['subject']) for i in indexes]
+            else: # meta-sources
+                batch = [self.meta_maps[so].index(self.metadata[i][so]) for i in indexes]
                 batch = np.atleast_2d(np.asarray(batch, dtype=int)).T
                 # print batch
-            else:
-                pass # TODO: support more sources
 
             rval.append(batch)
         return tuple(rval)
