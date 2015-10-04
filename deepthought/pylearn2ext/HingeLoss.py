@@ -23,6 +23,7 @@ class HingeLoss(Layer):
 
     def __init__(self, n_classes, layer_name, irange = None,
                  istdev = None,
+                 no_affine=False,
                  sparse_init = None):
         
         super(HingeLoss, self).__init__();
@@ -31,9 +32,14 @@ class HingeLoss(Layer):
         del self.self
 
         self.output_space = VectorSpace(n_classes)
-        self.b = sharedX(np.zeros((n_classes,)), name = 'hingeloss_b')
+
+        if not self.no_affine:
+            self.b = sharedX(np.zeros((n_classes,)), name = 'hingeloss_b')
 
     def get_monitoring_channels(self):
+
+        if self.no_affine:
+            return OrderedDict()
 
         W = self.W
 
@@ -145,26 +151,29 @@ class HingeLoss(Layer):
 
         rng = self.mlp.rng
 
-        if self.irange is not None:
-            assert self.istdev is None
-            assert self.sparse_init is None
-            W = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
-        elif self.istdev is not None:
-            assert self.sparse_init is None
-            W = rng.randn(self.input_dim, self.n_classes) * self.istdev
+        if self.no_affine:
+            self._params = []
         else:
-            assert self.sparse_init is not None
-            W = np.zeros((self.input_dim, self.n_classes))
-            for i in xrange(self.n_classes):
-                for j in xrange(self.sparse_init):
-                    idx = rng.randint(0, self.input_dim)
-                    while W[idx, i] != 0.:
+            if self.irange is not None:
+                assert self.istdev is None
+                assert self.sparse_init is None
+                W = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
+            elif self.istdev is not None:
+                assert self.sparse_init is None
+                W = rng.randn(self.input_dim, self.n_classes) * self.istdev
+            else:
+                assert self.sparse_init is not None
+                W = np.zeros((self.input_dim, self.n_classes))
+                for i in xrange(self.n_classes):
+                    for j in xrange(self.sparse_init):
                         idx = rng.randint(0, self.input_dim)
-                    W[idx, i] = rng.randn()
+                        while W[idx, i] != 0.:
+                            idx = rng.randint(0, self.input_dim)
+                        W[idx, i] = rng.randn()
 
-        self.W = sharedX(W,  'hingeloss_W' )
+            self.W = sharedX(W,  'hingeloss_W' )
 
-        self._params = [ self.b, self.W ]
+            self._params = [ self.b, self.W ]
 
     def get_weights_topo(self):
         if not isinstance(self.input_space, Conv2DSpace):
@@ -207,11 +216,17 @@ class HingeLoss(Layer):
         self.desired_space.validate(state_below)
         assert state_below.ndim == 2
 
-        assert self.W.ndim == 2
-        b = self.b
-        W = self.W
+        if not hasattr(self, 'no_affine'):
+            self.no_affine = False
 
-        rval = T.dot(state_below, W) + b
+        if self.no_affine:
+            rval = state_below
+        else:
+            assert self.W.ndim == 2
+            b = self.b
+            W = self.W
+
+            rval = T.dot(state_below, W) + b
 
         for value in get_debug_values(rval):
             if self.mlp.batch_size is not None:
@@ -226,7 +241,8 @@ class HingeLoss(Layer):
         Y_t = 2. * Y - 1.
         return Y_t
 
-    def hinge_cost(self, W, Y, Y_hat, C=1.):
+    # def hinge_cost(self, W, Y, Y_hat, C=1.):
+    def hinge_cost(self, Y, Y_hat):
         #prob = .5 * T.dot(self.W.T, self.W) + C * (T.maximum(1 - Y * Y_hat, 0) ** 2.).sum(axis=1)
         prob = (T.maximum(1 - Y * Y_hat, 0) ** 2.).sum(axis=1)
         return prob
@@ -248,7 +264,8 @@ class HingeLoss(Layer):
             op = owner.op
         assert Y_hat.ndim == 2
         Y_t = self.target_convert(Y)
-        prob = self.hinge_cost(self.W, Y_t, Y_hat)
+        # prob = self.hinge_cost(self.W, Y_t, Y_hat)
+        prob = self.hinge_cost(Y_t, Y_hat)
         assert prob.ndim == 1
         rval = prob.mean()
 
@@ -273,7 +290,8 @@ class HingeLoss(Layer):
 
         assert Y_hat.ndim == 2
         Y_t = self.target_convert(Y)
-        prob = self.hinge_cost(self.W, Y_t, Y_hat)
+        # prob = self.hinge_cost(self.W, Y_t, Y_hat)
+        prob = self.hinge_cost(Y_t, Y_hat)
         return prob
 
 
@@ -289,3 +307,9 @@ class HingeLoss(Layer):
         assert isinstance(coeff, float) or hasattr(coeff, 'dtype')
         W = self.W
         return coeff * abs(W).sum()
+
+    @wraps(Layer._modify_updates)
+    def _modify_updates(self, updates):
+
+        if self.no_affine:
+            return
