@@ -305,7 +305,7 @@ class EEGEpochsDataset(Dataset):
         space = CompositeSpace(space_components)
         source = tuple(source_components)
         self.data_specs = (space, source)
-        print self.data_specs
+        log.debug('data specs: {}'.format(self.data_specs))
 
     def has_targets(self):
         return True
