@@ -752,7 +752,7 @@ class Pipeline(object):
         multi_scores = list()
         for ch in eog_picks:
             ch_name = raw.ch_names[ch]
-            eog_inds, scores = ica.find_bads_eog(raw, ch_name, verbose=verbose)
+            eog_inds, scores = ica.find_bads_eog(raw, str(ch_name), verbose=verbose)
         #     print eog_inds, scores
             if plot:
                 ica.plot_scores(scores, exclude=eog_inds, title='EOG artifact sources (red) for channel {}'.format(ch_name))

@@ -13,6 +13,10 @@ class MNEFilterWrapper():
 
 
     def process(self, data):
+        # fix for new MNE requirements
+        import numpy as np
+        data = np.asarray(data, dtype=np.float64)
+
         if self.type == 'low-pass':
             return low_pass_filter(data, **self.params)
         elif self.type == 'high-pass':

@@ -86,7 +86,7 @@ class EEGEpochsDataset(Dataset):
                  zero_padding = True,   # if True (default) trials that are too short will be padded with
                                         # otherwise they will rejected.
 
-                 # optional signal filter to by applied before spitting the signal
+                 # optional signal filter to by applied before splitting the signal
                  signal_filter = None,
 
                  trial_processors = [],     # optional processing of the trials
