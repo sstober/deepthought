@@ -935,7 +935,7 @@ class Pipeline(object):
                     verticalalignment='top')
 
         ax = plt.subplot(subplot_grid[1:6])
-        ax.plot(sources[45,:])
+        ax.plot(sources[component,:])
         plt.subplots_adjust(wspace=0.06, hspace=0.1)
         plt.show()
 
