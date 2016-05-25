@@ -73,21 +73,21 @@ def _load_raw(subject,
     raw = mne.io.Raw(mne_data_filepath, preload=True, verbose=verbose)
 
     if apply_reference:	    
-	    if has_mastoid_channels is None \
-	        or has_mastoid_channels is True \
-	        or has_mastoid_channels(subject) is True:
-			## referencing to mastoids
-	        if reference_mastoids:
-	            log.info('Referencing to mastoid channels: {}'.format(MASTOID_CHANNELS))
-	            mne.io.set_eeg_reference(raw, MASTOID_CHANNELS, copy=False) # inplace
-	        else:
-	            log.info('This recording has unused mastoid channels: {} '
-	                     'To use them, re-run with reference_mastoids=True.'.format(MASTOID_CHANNELS))
-	        raw.drop_channels(MASTOID_CHANNELS)
-       	else:
-       		## referencing to average
-       		log.info('Referencing to average.')
-       		mne.io.set_eeg_reference(raw, copy=False)
+        if has_mastoid_channels is None \
+            or has_mastoid_channels is True \
+            or has_mastoid_channels(subject) is True:
+            ## referencing to mastoids
+            if reference_mastoids:
+                log.info('Referencing to mastoid channels: {}'.format(MASTOID_CHANNELS))
+                mne.io.set_eeg_reference(raw, MASTOID_CHANNELS, copy=False) # inplace
+            else:
+                log.info('This recording has unused mastoid channels: {} '
+                         'To use them, re-run with reference_mastoids=True.'.format(MASTOID_CHANNELS))
+            raw.drop_channels(MASTOID_CHANNELS)
+        else:
+            ## referencing to average
+            log.info('Referencing to average.')
+            mne.io.set_eeg_reference(raw, copy=False)
 
     ## optional event merging
     if onsets == 'audio':
