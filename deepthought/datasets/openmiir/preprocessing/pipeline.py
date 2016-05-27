@@ -201,7 +201,7 @@ def import_and_process_metadata(biosemi_data_root, mne_data_root, subject, verbo
 
     # crop to first event - 1s ... last event + 20s (longer than longest trial)
     onesec = raw.info['sfreq']
-    tmin, tmax = raw.index_as_time([events[0,0]-onesec, events[-1,0]+20*onesec])
+    tmin, tmax = raw.times[[events[0,0]-onesec, events[-1,0]+20*onesec]]
     log.info('Cropping raw inplace to {:.3f}s - {:.3f}s'.format(tmin, tmax))
     raw.crop(tmin=tmin, tmax=tmax, copy=False)
     # fix sample offser -> 0
@@ -448,9 +448,9 @@ class Pipeline(object):
         plt.figure(figsize=(17,10))
         axes = plt.gca()
         mne.viz.plot_events(trial_events, raw.info['sfreq'], raw.first_samp, axes=axes)
-        print '1st event at ', raw.index_as_time(trial_events[0,0])
-        print 'last event at ', raw.index_as_time(trial_events[-1,0])
-        trial_event_times = raw.index_as_time(trial_events[:,0])
+        print '1st event at ', raw.times[trial_events[0,0]]
+        print 'last event at ', raw.times[trial_events[-1,0]]
+        trial_event_times = raw.times[trial_events[:,0]]
 
         self.trial_events = trial_events
         self.trial_event_times = trial_event_times
@@ -484,7 +484,7 @@ class Pipeline(object):
 
         # recompute trial_events and times
         trial_events = mne.find_events(raw, stim_channel='STI 014', shortest_event=0)
-        trial_event_times = raw.index_as_time(trial_events[:,0])
+        trial_event_times = raw.times[trial_events[:,0]]
 
         self.trial_events = trial_events
         self.trial_event_times = trial_event_times
@@ -674,7 +674,7 @@ class Pipeline(object):
             axes = plt.gca()
             mne.viz.plot_events(resampled_trial_events, raw.info['sfreq'], raw.first_samp, axes=axes) #, color=color, event_id=event_id)
 
-        resampled_trial_event_times = raw.index_as_time(resampled_trial_events[:,0])
+        resampled_trial_event_times = raw.times[resampled_trial_events[:,0]]
         # print resampled_trial_event_times
 
         diff = resampled_trial_event_times - trial_event_times
