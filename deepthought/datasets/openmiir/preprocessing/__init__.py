@@ -16,6 +16,7 @@ def load_and_preprocess_raw(subject,
                             h_freq=30,
                             sfreq=None,
                             ica_cleaning=True,
+                            ica_name='100p_64c',
                             l_freq2=None,
                             h_freq2=None,
                             verbose=None,
@@ -53,11 +54,11 @@ def load_and_preprocess_raw(subject,
 
     if ica_cleaning:
         # load ica
-        ica = load_ica(subject, description='100p_64c')
+        ica = load_ica(subject, description=ica_name)
         if verbose:
             log.info('Applying ICA: {}'.format(ica))
         log.info('Excluding ICA components: {}'.format(ica.exclude))
-        raw = ica.apply(raw, exclude=ica.exclude, copy=False)
+        raw = ica.apply(raw, exclude=ica.exclude)
 
     if l_freq2 is not None or h_freq2 is not None:
         log.info('Applying additional filter: low_cut_freq={} high_cut_freq={}'.format(l_freq2, h_freq2))
